@@ -25,7 +25,6 @@ urlpatterns = [
     url(r'^healthcheck/$', views.health_check),
     url('', include('social_django.urls', namespace='social')),
     url(r'^', include('charcha.discussions.urls')),
-    url(r'^', include('charcha.pushpa.urls')),
     url(r'^', include('django.contrib.auth.urls')),
 ]
 

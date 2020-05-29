@@ -9,8 +9,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import F
 from django.urls import reverse
 
-from charcha.team.models import Team
-
 # TODO: Read this from settings 
 SERVER_URL = "https://charcha.hashedin.com"
 
@@ -163,16 +161,42 @@ class PostsManager(models.Manager):
         return post
 
     def recent_posts_with_my_votes(self, user=None):
-        public_posts = Post.objects\
-            .filter(team__is_public=True)\
+        posts = Post.objects\
+            .annotate(score=F('upvotes') - F('downvotes'))\
             .select_related("author")\
-            .select_related("team")
-        private_posts = Post.objects\
-            .filter(team__members__user=user)\
-            .select_related("author")\
-            .select_related("team")
-        posts = public_posts.union(private_posts)
-        return posts.order_by("-submission_time")[:100]
+            .order_by("-submission_time")[:100]
+        if user:
+            posts = self._append_votes_by_user(posts, user)
+        return posts
+
+    def _append_votes_by_user(self, posts, user):
+        # Returns a dictionary
+        # key = postid
+        # value = set of votes cast by this user
+        # for example set('downvote', 'flag')
+        post_ids = [p.id for p in posts]
+        post_type = ContentType.objects.get_for_model(Post)
+        objects = Vote.objects.\
+                    only('object_id', 'type_of_vote').\
+                    filter(content_type=post_type.id,
+                        object_id__in=post_ids,
+                        voter=user)
+
+        votes_by_post = defaultdict(set)
+        for obj in objects:
+            votes_by_post[obj.object_id].add(obj.type_of_vote)
+
+        for post in posts:
+            post.is_upvoted = False
+            post.is_downvoted = False
+            if UPVOTE in votes_by_post[post.id]:
+                post.is_upvoted = True
+            elif DOWNVOTE in votes_by_post[post.id]:
+                post.is_downvoted = True
+            elif FLAG in votes_by_post[post.id]:
+                post.is_flagged = True
+            
+        return posts
 
     def vote_type_to_string(self, vote_type):
         mapping = {
@@ -189,7 +213,6 @@ class Post(Votable):
             ["submission_time",],
         ]
     objects = PostsManager()
-    team = models.ForeignKey(Team, on_delete=models.PROTECT, default=1)
     title = models.CharField(max_length=120)
     url = models.URLField(blank=True)
     text = models.TextField(blank=True, max_length=8192)

@@ -66,9 +66,6 @@
 <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 <script src="{% static "main.js" %}"></script>
-{% if request.user.is_authenticated %}
-<script src="{% static "pushpa.js" %}"></script>
-{% endif %}
 {% block before-body-close %}
 {% endblock %}
 </body>

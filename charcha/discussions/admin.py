@@ -7,8 +7,8 @@ class UserAdmin(admin.ModelAdmin):
     readonly_fields = ('username', )
 
 class PostAdmin(admin.ModelAdmin):
-    list_display = ('title', 'team')
-    fields = ('team', 'title', 'url', 'text', 'author', 'num_comments',
+    list_display = ('title', )
+    fields = ('title', 'url', 'text', 'author', 'num_comments',
         'upvotes', 'downvotes', 'flags')
     readonly_fields = ('num_comments', 'author')
     

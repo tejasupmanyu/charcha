@@ -22,7 +22,6 @@
         <div class="post-line-2">
           <div class="post-score">
               by {{ post.author }} |
-              in {{ post.team.name }} |
               {{ post.num_comments }} comment{{ post.num_comments|pluralize }} |
               {{ post.submission_time | naturaltime }}
               {% if request.user.is_staff %}
