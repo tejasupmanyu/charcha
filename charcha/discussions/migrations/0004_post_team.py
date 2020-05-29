@@ -7,15 +7,9 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('team', '0002_team_is_public'),
         ('discussions', '0003_auto_20181226_1301'),
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='post',
-            name='team',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.PROTECT, to='team.Team'),
-            preserve_default=False,
-        ),
+        
     ]

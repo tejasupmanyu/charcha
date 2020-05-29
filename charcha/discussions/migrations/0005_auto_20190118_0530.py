@@ -11,9 +11,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
-            model_name='post',
-            name='team',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.PROTECT, to='team.Team'),
-        ),
+        
     ]
