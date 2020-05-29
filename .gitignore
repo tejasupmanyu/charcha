@@ -1,25 +1,6 @@
-# See http://help.github.com/ignore-files/ for more about ignoring files.
-
-# IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
 .project
 .pydevproject
-
-# IDE - VSCode
-.vscode
 .vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-
-# Python / Django specific ignores
 *.pyc
 build/
 dist/
@@ -31,26 +12,3 @@ staticfiles
 
 *.log.*
 *.log
-
-# Angular specific ignores
-# compiled output
-ui/dist
-ui/tmp
-ui/out-tsc
-
-# dependencies
-ui/node_modules
-
-# misc
-ui/.sass-cache
-ui/connect.lock
-ui/coverage
-ui/libpeerconnection.log
-ui/npm-debug.log
-ui/yarn-error.log
-ui/testem.log
-ui/typings
-
-# System Files
-.DS_Store
-Thumbs.db
