@@ -1,12 +1,7 @@
 import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
-import { DiscussionDetailsComponent } from './discussion-details/discussion-details.component';
-import { DiscussionsComponent } from './discussions/discussions.component';
 
-const routes: Routes = [
-  {path: '', component: DiscussionsComponent},
-  {path: 'discuss/:id', component: DiscussionDetailsComponent}
-];
+const routes: Routes = [];
 
 @NgModule({
   imports: [RouterModule.forRoot(routes)],

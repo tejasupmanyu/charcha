@@ -23,7 +23,6 @@
               "src/assets"
             ],
             "styles": [
-              "src/reboot.css",
               "src/styles.css"
             ],
             "scripts": []
@@ -81,7 +80,6 @@
             "tsConfig": "src/tsconfig.spec.json",
             "karmaConfig": "src/karma.conf.js",
             "styles": [
-              "src/reboot.css",
               "src/styles.css"
             ],
             "scripts": [],
