@@ -1,3 +1,9 @@
-# Don't modify this file
-# Add new packages to requirements/base.txt or requirements/local.txt
--r requirements/production.txt
+Django==3.0.6
+whitenoise==5.1.0
+dj-database-url==0.5.0
+dj-email-url==1.0.0
+psycopg2==2.8.5
+django-bootstrap-form==3.4
+markdown2==2.3.9
+social-auth-app-django==3.1.0
+gunicorn==20.0.4
