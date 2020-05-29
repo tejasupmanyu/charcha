@@ -81,9 +81,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'bootstrapform',
     'charcha.team',
-    'charcha.chat',
     'charcha.discussions',
-    'charcha.pushpa',
     'social_django',
 ]
 
