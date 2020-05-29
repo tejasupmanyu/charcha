@@ -9,6 +9,7 @@
 {% spaceless %}
 <div class="container-fluid">
   <div class="post">
+      {% include "partials/post-vote-control.html" with obj_type='posts' obj=post %}
       <div>
           <div class="post-title">
             <h1>{{ post.title }}</h1>
@@ -19,7 +20,7 @@
                {% if request.user.id == post.author.id %}
                <a href="{% url 'edit-discussion' post.id %}">edit</a> | 
                {% endif %}
-              
+              {{ post.score }} point{{ post.score | pluralize }} | 
               {{ comments|length }} comment{{ comments | length | pluralize }} |
               {{ post.submission_time | naturaltime }}
 
@@ -43,11 +44,14 @@
   <div class="comments">
   {% for comment in comments %}
     <div id="comment-{{comment.id}}" class="comment indent-{{comment.indent}}">
+      {% include "partials/post-vote-control.html" with obj_type='comments' obj=comment %}
       <div>
         <div class="comment-header">
           <span class="comment-author">
             by {{ comment.author.username }}
           </span>
+          <span> | </span>
+          <span>{{comment.score}} points</span>
           <span> | </span>
           <span class="comment-submission-time">{{ comment.submission_time | naturaltime }}</span>
           {% if request.user.username == comment.author.username %}
