@@ -1,9 +1,9 @@
 <div>
   <h2>{{ discussion.title }}</h2>
   <p>
-    <markdown [data]="discussion.body"></markdown>
+    {{ discussion.body }}
   </p>
   <div *ngFor="let comment of discussion.comments">
-    <p><markdown [data]="comment.body"></markdown></p>
+    <p>{{ comment.body}} </p>
   </div>
 </div>

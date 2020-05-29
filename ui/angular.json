@@ -24,13 +24,9 @@
             ],
             "styles": [
               "src/reboot.css",
-              "src/styles.css",
-              "node_modules/prismjs/themes/prism-okaidia.css"
+              "src/styles.css"
             ],
-            "scripts": [
-              "node_modules/prismjs/prism.js",
-              "node_modules/marked/lib/marked.js"
-            ]
+            "scripts": []
           },
           "configurations": {
             "production": {
