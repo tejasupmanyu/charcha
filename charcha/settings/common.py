@@ -188,12 +188,11 @@ SOCIAL_AUTH_PIPELINE = (
     'social_core.pipeline.social_auth.social_user',
     'social_core.pipeline.social_auth.associate_by_email',
     'social_core.pipeline.user.get_username',
-
-    #TODO: insert is_hasher flag before creating user
     'social_core.pipeline.user.create_user',
     'social_core.pipeline.social_auth.associate_user',
     'social_core.pipeline.social_auth.load_extra_data',
     'social_core.pipeline.user.user_details',
+    'charcha.discussions.models.save_avatar'
 )
 
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ.get('GOOGLE_KEY')

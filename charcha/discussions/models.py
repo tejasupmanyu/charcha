@@ -22,6 +22,7 @@ class User(AbstractUser):
         db_table = "users"
 
     score = models.IntegerField(default=0)
+    avatar = models.URLField(max_length=1000, default=None, null=True)
 
 class Vote(models.Model):
     class Meta:
@@ -385,6 +386,12 @@ def _find_next_wbs(post, parent_wbs=None):
 
 def notify_users(users, title, body, relative_link):
     pass
+
+def save_avatar(backend, strategy, details, response, user=None, *args, **kwargs):
+    if backend.name == 'google-oauth2':
+        url = response['picture']
+        user.avatar = url
+        user.save()
 
 class Favourite(models.Model):
     class Meta:
