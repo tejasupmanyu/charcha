@@ -29,7 +29,7 @@ _chat_client = _load_chat_client()
 def notify_space(spaceid, event):
     message = _create_message(event)
     _chat_client.spaces().messages() \
-        .create(parent="spaces/" + spaceid, body=message) \
+        .create(parent=spaceid, body=message) \
         .execute()
 
 def _create_message(event):

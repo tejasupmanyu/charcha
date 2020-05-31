@@ -17,13 +17,20 @@ UPVOTE = 1
 DOWNVOTE = 2
 FLAG = 3
 
-BROADCAST_SPACE_ID = "AAAAt40E3Cc"
-
 def save_avatar(backend, strategy, details, response, user=None, *args, **kwargs):
     if backend.name == 'google-oauth2':
         url = response['picture']
         user.avatar = url
         user.save()
+
+def update_gchat_space(email, space_id):
+    try:
+        user = User.objects.get(email=email)
+        user.gchat_space = space_id
+        user.save()
+        return True
+    except User.DoesNotExist as e:
+        return False
 
 class User(AbstractUser):
     """Our custom user model with a score"""
@@ -35,6 +42,7 @@ class User(AbstractUser):
     
     # If the user has added charcha bot, then this field stores the unique space id
     gchat_space = models.TextField(max_length=50, default=None, null=True)
+
 
 class Vote(models.Model):
     class Meta:
@@ -279,7 +287,7 @@ class Post(Votable):
             "link": SERVER_URL + reverse("discussion", args=[self.id]),
             "link_title": "View Discussion"
         }
-        notify_space(BROADCAST_SPACE_ID, event)
+        notify_space(settings.BROADCAST_SPACE_ID, event)
 
     def __str__(self):
         return self.title

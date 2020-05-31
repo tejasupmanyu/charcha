@@ -313,3 +313,5 @@ WHITENOISE_ROOT = os.path.join(PROJECT_ROOT, 'public')
 STATICFILES_DIRS = [
     os.path.join(PROJECT_ROOT, 'static'),
 ]
+
+BROADCAST_SPACE_ID = os.environ.get('BROADCAST_SPACE_ID', "spaces/AAAAt40E3Cc")

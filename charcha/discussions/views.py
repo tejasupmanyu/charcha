@@ -1,4 +1,6 @@
-from django.http import HttpResponse, HttpResponseRedirect
+import json
+
+from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
 from django.views import View 
 from django.views.decorators.http import require_http_methods
 from django import forms
@@ -13,9 +15,11 @@ from django.db.models import F
 from django.forms.models import model_to_dict
 from django.urls import reverse
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import UPVOTE, DOWNVOTE, FLAG
 from .models import Post, Comment, Vote, User
+from .models import update_gchat_space
 
 @login_required
 def homepage(request):
@@ -157,6 +161,37 @@ class EditDiscussion(LoginRequiredMixin, View):
         post_url = reverse('discussion', args=[post.id])
         return HttpResponseRedirect(post_url)
 
+
+@require_http_methods(['POST'])
+@csrf_exempt
+def google_chatbot(request):
+    event = json.loads(request.body)
+    text = None
+    if event['type'] == 'ADDED_TO_SPACE':
+        if event['space']['type'] == 'DM':
+            space_id = event['space']['name']
+            email = event['user']['email']
+            user_exists = update_gchat_space(email, space_id)
+            if user_exists:
+                text = "From now on, I will notify you of any updates in the discussions you participate."
+            else:
+                text = """You haven't logged in to charcha yet. Please do the following:        
+
+                1. Remove charcha bot 
+                2. Go to https://charcha.hashedin.com and login with your @hashedin.com email address
+                3. Then come back and add charcha bot once again
+                """
+    elif event['type'] == 'REMOVED_FROM_SPACE':
+        if event['space']['type'] == 'DM':
+            email = event['user']['email']
+            update_gchat_space(email, None)
+    elif event['type'] == 'MESSAGE':
+        text = "This is a one way street. I will completely ignore anything you type."
+
+    if text:
+        return JsonResponse({"text": text})
+    else:
+        return HttpResponse("OK")
 
 @login_required
 @require_http_methods(['POST'])
