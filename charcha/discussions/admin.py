@@ -3,7 +3,7 @@ from django.contrib.contenttypes.admin import GenericTabularInline
 from .models import Post, Comment, Vote, Favourite, User
 
 class UserAdmin(admin.ModelAdmin):
-    fields = ('username', 'score', 'email', 'is_active', 'is_staff')
+    fields = ('username', 'gchat_space', 'score', 'email', 'is_active', 'is_staff')
     readonly_fields = ('username', )
 
 class PostAdmin(admin.ModelAdmin):

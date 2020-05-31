@@ -7,3 +7,5 @@ django-bootstrap-form==3.4
 markdown2==2.3.9
 social-auth-app-django==3.1.0
 gunicorn==20.0.4
+google-api-python-client==1.8.4
+oauth2client==4.1.3

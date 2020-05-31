@@ -8,6 +8,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import F
 from django.urls import reverse
+from .bot import notify_space
 
 # TODO: Read this from settings 
 SERVER_URL = "https://charcha.hashedin.com"
@@ -16,6 +17,14 @@ UPVOTE = 1
 DOWNVOTE = 2
 FLAG = 3
 
+BROADCAST_SPACE_ID = "AAAAt40E3Cc"
+
+def save_avatar(backend, strategy, details, response, user=None, *args, **kwargs):
+    if backend.name == 'google-oauth2':
+        url = response['picture']
+        user.avatar = url
+        user.save()
+
 class User(AbstractUser):
     """Our custom user model with a score"""
     class Meta:
@@ -23,6 +32,9 @@ class User(AbstractUser):
 
     score = models.IntegerField(default=0)
     avatar = models.URLField(max_length=1000, default=None, null=True)
+    
+    # If the user has added charcha bot, then this field stores the unique space id
+    gchat_space = models.TextField(max_length=50, default=None, null=True)
 
 class Vote(models.Model):
     class Meta:
@@ -220,6 +232,14 @@ class Post(Votable):
     submission_time = models.DateTimeField(auto_now_add=True)
     num_comments = models.IntegerField(default=0)
 
+    def save(self, *args, **kwargs):
+        is_create = False
+        if not self.pk:
+            is_create = True
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        if is_create:
+            self.on_new_post()
+
     def get_absolute_url(self):
         return "/discuss/%i/" % self.id
 
@@ -233,16 +253,33 @@ class Post(Votable):
 
         self.num_comments = F('num_comments') + 1
         self.save(update_fields=["num_comments"])
-
-        if self.author.username != author.username:
-            notify_users(
-                [self.author],
-                "%s commented on your post" % author.username,
-                comment.text,
-                reverse("reply_to_comment", args=[comment.id])
-            )
-
+        comment.on_new_comment()
         return comment
+
+    def watchers(self):
+        return User.objects.raw("""
+                WITH post_participants as (
+                    SELECT p.id as postid, p.author_id as userid FROM posts p
+                    UNION ALL
+                    SELECT c.post_id as postid, c.author_id as userid FROM comments c
+                ) 
+                SELECT DISTINCT u.id, u.username, u.gchat_space
+                FROM users u JOIN post_participants pp on u.id = pp.userid
+                WHERE u.gchat_space is not NULL and u.gchat_space != ''
+                AND pp.postid = %s
+            """, [self.id])
+
+    def on_new_post(self):
+        event = {
+            "heading": "New Discussion",
+            "sub_heading": "by " + self.author.username,
+            "image": self.author.avatar,
+            "line1": self.title,
+            "line2": self.text[:150],
+            "link": SERVER_URL + reverse("discussion", args=[self.id]),
+            "link_title": "View Discussion"
+        }
+        notify_space(BROADCAST_SPACE_ID, event)
 
     def __str__(self):
         return self.title
@@ -333,24 +370,24 @@ class Comment(Votable):
 
         comment.post.num_comments = F('num_comments') + 1
         comment.post.save()
-
-        if comment.post.author.username != author.username:
-            notify_users(
-                    [comment.post.author],
-                    "%s commented on your post" % comment.author.username,
-                    comment.text,
-                    reverse("reply_to_comment", args=[comment.id])
-                )
-
-        if comment.parent_comment.author.username != author.username:
-            notify_users(
-                    [comment.parent_comment.author],
-                    "%s replied to your comment" % comment.author.username,
-                    comment.text,
-                    reverse("reply_to_comment", args=[comment.id])
-                )
-
+        comment.on_new_comment()
         return comment
+
+    def on_new_comment(self):
+        event = {
+            "heading": "New Comment",
+            "sub_heading": "by " + self.author.username,
+            "image": self.author.avatar,
+            "line1": self.post.title,
+            "line2": self.text[:150],
+            "link": SERVER_URL + reverse("discussion", args=[self.id]) + "#comment-" + str(self.id),
+            "link_title": "View Comment"
+        }
+        
+        for watcher in self.post.watchers():
+            if watcher.username == self.author.username:
+                continue
+            notify_space(watcher.gchat_space, event)
 
     def __str__(self):
         return self.text
@@ -383,15 +420,6 @@ def _find_next_wbs(post, parent_wbs=None):
         last_wbs = max_wbs.split(".")[-1]
         next_wbs = int(last_wbs) + 1
         return first_wbs + '{0:04d}'.format(next_wbs)
-
-def notify_users(users, title, body, relative_link):
-    pass
-
-def save_avatar(backend, strategy, details, response, user=None, *args, **kwargs):
-    if backend.name == 'google-oauth2':
-        url = response['picture']
-        user.avatar = url
-        user.save()
 
 class Favourite(models.Model):
     class Meta:
