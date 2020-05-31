@@ -391,7 +391,7 @@ class Comment(Votable):
             "image": self.author.avatar,
             "line1": self.post.title,
             "line2": self.text[:150],
-            "link": SERVER_URL + reverse("discussion", args=[self.id]) + "#comment-" + str(self.id),
+            "link": SERVER_URL + reverse("discussion", args=[self.post.id]) + "#comment-" + str(self.id),
             "link_title": "View Comment"
         }
         
