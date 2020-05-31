@@ -19,7 +19,10 @@ FLAG = 3
 
 def save_avatar(backend, strategy, details, response, user=None, *args, **kwargs):
     if backend.name == 'google-oauth2':
-        url = response['picture']
+        url = response.get('picture', None)
+        if not url:
+            image = response.get('image', {})
+            url = image.get('url', None)
         user.avatar = url
         user.save()
 
