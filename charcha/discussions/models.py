@@ -44,7 +44,7 @@ class User(AbstractUser):
     avatar = models.URLField(max_length=1000, default=None, null=True)
     
     # If the user has added charcha bot, then this field stores the unique space id
-    gchat_space = models.TextField(max_length=50, default=None, null=True)
+    gchat_space = models.CharField(max_length=50, default=None, null=True)
 
 
 class Vote(models.Model):
@@ -230,6 +230,13 @@ class PostsManager(models.Manager):
         }
         return mapping[vote_type]
 
+
+class Category(models.Model):
+    class Meta:
+        db_table = "categories"
+    name = models.CharField(max_length=50)
+    gchat_space = models.CharField(max_length=50, default=None, null=True)
+
 class Post(Votable):
     class Meta:
         db_table = "posts"
@@ -241,6 +248,7 @@ class Post(Votable):
     url = models.URLField(blank=True)
     text = models.TextField(blank=True, max_length=8192)
     submission_time = models.DateTimeField(auto_now_add=True)
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, default=1)
     num_comments = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
