@@ -18,7 +18,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import UPVOTE, DOWNVOTE, FLAG
-from .models import Post, Comment, Vote, User
+from .models import Post, Comment, Vote, User, Category
 from .models import update_gchat_space
 
 @login_required
@@ -105,12 +105,14 @@ class EditComment(LoginRequiredMixin, View):
 class StartDiscussionForm(forms.ModelForm):
     class Meta:
         model = Post
-        fields = ['title', 'text']
+        fields = ['category', 'title', 'text']
         labels = {
+            'category': 'Category',
             'title': 'Title',
             'text': 'Details'
         }
         help_text = {
+            'category': 'Category',
             'title': 'Title',
             'text': 'Markdown syntax allowed'
         }
@@ -128,6 +130,7 @@ class StartDiscussionForm(forms.ModelForm):
 class StartDiscussionView(LoginRequiredMixin, View):
     def get(self, request):
         form = StartDiscussionForm(initial={"author": request.user})
+        form.fields['category'].queryset = Category.objects.all()
         return render(request, "submit.html", context={"form": form})
 
     def post(self, request):

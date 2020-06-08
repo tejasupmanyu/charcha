@@ -234,8 +234,13 @@ class PostsManager(models.Manager):
 class Category(models.Model):
     class Meta:
         db_table = "categories"
+        verbose_name_plural = "Categories"
+
     name = models.CharField(max_length=50)
     gchat_space = models.CharField(max_length=50, default=None, null=True)
+
+    def __str__(self):
+        return self.name
 
 class Post(Votable):
     class Meta:
@@ -307,7 +312,8 @@ class Post(Votable):
             "link": SERVER_URL + reverse("discussion", args=[self.id]),
             "link_title": "View Discussion"
         }
-        notify_space(settings.BROADCAST_SPACE_ID, event)
+        space_id = self.category.gchat_space
+        notify_space(space_id, event)
 
     def __str__(self):
         return self.title

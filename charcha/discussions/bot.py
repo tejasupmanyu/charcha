@@ -28,9 +28,12 @@ _chat_client = _load_chat_client()
 
 def notify_space(spaceid, event):
     message = _create_message(event)
-    _chat_client.spaces().messages() \
-        .create(parent=spaceid, body=message) \
-        .execute()
+    try:
+      _chat_client.spaces().messages() \
+          .create(parent=spaceid, body=message) \
+          .execute()
+    except Exception:
+      logger.exception("Cannot send message to space " + spaceid)
 
 def _create_message(event):
     return {
