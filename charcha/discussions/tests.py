@@ -1,6 +1,26 @@
+from contextlib import contextmanager
+from collections import defaultdict
 from django.test import TestCase
 from django.contrib.auth.models import AnonymousUser
 from .models import Post, Vote, Comment, User
+from . import models
+
+# Tests should not send out a notification
+models.notify_space = lambda s, e: None
+
+@contextmanager
+def record_notifications():
+    notifications = defaultdict(list)
+    def notify_space(space_id, event):
+        notifications[space_id].append(event)
+    
+    original_notify_space = models.notify_space
+    
+    try:
+        models.notify_space = notify_space
+        yield notifications
+    finally:
+        models.notify_space = original_notify_space
 
 class DiscussionTests(TestCase):
     def setUp(self):
@@ -8,11 +28,11 @@ class DiscussionTests(TestCase):
         
     def _create_users(self):
         self.ramesh = User.objects.create_user(
-            username="ramesh", password="top_secret")
+            username="ramesh", password="top_secret", gchat_space="ramesh")
         self.amit = User.objects.create_user(
-            username="amit", password="top_secret")
+            username="amit", password="top_secret", gchat_space="amit")
         self.swetha = User.objects.create_user(
-            username="swetha", password="top_secret")
+            username="swetha", password="top_secret", gchat_space="swetha")
         self.anamika = AnonymousUser()
 
     def new_discussion(self, user, title):
@@ -102,3 +122,28 @@ class DiscussionTests(TestCase):
         # check if num_comments in post object is updated
         post = Post.objects.get(pk=post.id)
         self.assertEquals(post.num_comments, 4)
+
+    def test_notifications(self):
+        with record_notifications() as notifications:
+            # Expect a single notification to broadcast when a new post is created
+            post = self.new_discussion(self.ramesh, "Ramesh's Biography")
+            self.assertEqual(len(notifications), 1, msg="Broadcast Message")
+            
+            # No private notifications as of now
+            self.assertEqual(len(notifications['ramesh']), 0, msg="No private message on new discussion")
+            self.assertEqual(len(notifications['amit']), 0, msg="No private message on new discussion")
+            self.assertEqual(len(notifications['swetha']), 0, msg="No private message on new discussion")
+
+            # Upvotes don't result in a notification
+            # but the person who upvoted gets added to the watchers list
+            post.upvote(self.amit)
+
+            # Swetha adds a comment, which triggers private notifications
+            swethas_comment = post.add_comment("See my biography as well!", self.swetha)
+
+            # Ramesh and Amit get a private notification
+            # Swetha doesn't, because she was the one who commented
+            self.assertEqual(len(notifications['ramesh']), 1, msg="Discussion author must get private notification")
+            self.assertEqual(len(notifications['amit']), 1, msg="People who upvote must get a private notifcation")
+            self.assertEqual(len(notifications['swetha']), 0, 
+                    msg="Author of comment must not get notified about her own comment")

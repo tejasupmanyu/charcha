@@ -268,17 +268,26 @@ class Post(Votable):
         return comment
 
     def watchers(self):
+        post_type = ContentType.objects.get_for_model(Post)
+        
+        # A post watcher is
+        # 1. The author of the post
+        # 2. Anyone who has commented on the post
+        # 3. Anyone who has voted on the post
         return User.objects.raw("""
                 WITH post_participants as (
                     SELECT p.id as postid, p.author_id as userid FROM posts p
                     UNION ALL
                     SELECT c.post_id as postid, c.author_id as userid FROM comments c
+                    UNION ALL
+                    SELECT v.object_id as postid, v.voter_id as userid FROM votes v
+                    WHERE v.content_type_id = %s
                 ) 
                 SELECT DISTINCT u.id, u.username, u.gchat_space
                 FROM users u JOIN post_participants pp on u.id = pp.userid
                 WHERE u.gchat_space is not NULL and u.gchat_space != ''
                 AND pp.postid = %s
-            """, [self.id])
+            """, [post_type.id, self.id])
 
     def on_new_post(self):
         event = {
