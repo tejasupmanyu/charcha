@@ -5,12 +5,8 @@
 {% block title %}Edit Discussion{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<h2>Editing Discussion</h2>
 
-<h1>Editing Discussion</h1>
-
-<div class="row">
-<div class="col-md-4 col-sm-6">
 <br/>
 <form method="post">
     {% csrf_token %}
@@ -23,7 +19,6 @@
   <p id="preview">
   </p>
 </div>
-</div></div></div>
 
 {% endblock %}
 

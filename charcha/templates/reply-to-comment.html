@@ -5,9 +5,7 @@
 {% block title %}Reply to Comment{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-
-<h1>Replying to:</h1>
+<h3>You are replying to:</h3>
 
 <div class="comment-text">
 <p>
@@ -15,8 +13,6 @@
 </p>
 </div>
 
-<div class="row">
-<div class="col-md-4 col-sm-6">
 <br/>
 <form method="post">
     {% csrf_token %}
@@ -29,7 +25,6 @@
   <p id="preview">
   </p>
 </div>
-</div></div></div>
 
 {% endblock %}
 

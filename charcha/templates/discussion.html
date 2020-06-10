@@ -7,80 +7,85 @@
 
 {% block content %}
 {% spaceless %}
-<div class="container-fluid">
-  <div class="post">
-      {% include "partials/post-vote-control.html" with obj_type='posts' obj=post %}
-      <div>
-          <div class="post-title">
-            <h1>{{ post.title }}</h1>
-          </div>
-          <div class="post-line-2">
-            <div class="post-score">
-               by {{ post.author.username }} | 
-               {% if request.user.id == post.author.id %}
-               <a href="{% url 'edit-discussion' post.id %}">edit</a> | 
-               {% endif %}
-              {{ post.score }} point{{ post.score | pluralize }} | 
-              {{ comments|length }} comment{{ comments | length | pluralize }} |
-              {{ post.submission_time | naturaltime }}
-
-              {% if request.user.is_staff %}
-              | <a href="{% url 'admin:discussions_post_change' post.id %}">admin</a>
-              {% endif %}
-            </div>
-          </div>
-          {% if post.text %}
-          <div class="post-text">
-            <p>{{post.text | markdown}}</p>
-          </div>
-          {% endif %}
-          <form method="post" action="">
-            {% csrf_token %}
-            {{ form | bootstrap }}
-            <button type="submit" class="btn btn-default">Add Comment</button>
-          </form>
-      </div>
+<div class="post">
+    <!-- {% include "partials/post-vote-control.html" with obj_type='posts' obj=post %} -->
+  <div class="post-title">
+    <h2>{{ post.title }}</h2>
   </div>
-  <div class="comments">
-  {% for comment in comments %}
-    <div id="comment-{{comment.id}}" class="comment indent-{{comment.indent}}">
-      {% include "partials/post-vote-control.html" with obj_type='comments' obj=comment %}
-      <div>
-        <div class="comment-header">
-          <span class="comment-author">
-            by {{ comment.author.username }}
-          </span>
-          <span> | </span>
-          <span>{{comment.score}} points</span>
-          <span> | </span>
-          <span class="comment-submission-time">{{ comment.submission_time | naturaltime }}</span>
-          {% if request.user.username == comment.author.username %}
-          <span> | </span>
-          <span><a href="{% url 'edit_comment' comment.id %}">edit</a>
-          {% endif %}
-          <span> | </span>
-          <span><a href="#comment-{{comment.id}}">permalink</a>
-          {% if request.user.is_staff %}
-            <span> | </span>
-            <span>
-              <a href="{% url 'admin:discussions_comment_change' comment.id %}">admin</a>
-            </span>
-          {% endif %}
-        </div>
-        <div class="comment-text">
-          <p>
-            {{ comment.text | markdown}}
-          </p>
-        </div>
-        {% if comment.indent < 12 %}
-        <a class="reply" href="{% url 'reply_to_comment' comment.id %}">reply</a>
-        {% else %}
-        <span><i>replies not allowed anymore</i></span>
+  <div class="post-line-2">
+    <div class="post-score">
+        by {{ post.author.username }} | 
+        {% if request.user.id == post.author.id %}
+        <a href="{% url 'edit-discussion' post.id %}">edit</a> | 
         {% endif %}
-      </div>
+      {{ post.score }} point{{ post.score | pluralize }} | 
+      {{ comments|length }} comment{{ comments | length | pluralize }} |
+      {{ post.submission_time | naturaltime }}
+
+      {% if request.user.is_staff %}
+      | <a href="{% url 'admin:discussions_post_change' post.id %}">admin</a>
+      {% endif %}
     </div>
-  {% endfor %}
- </div>
+  </div>
+  {% if post.text %}
+  <div class="post-text">
+    <p>{{post.text | markdown}}</p>
+  </div>
+  {% endif %}
+  <form method="post" action="">
+    {% csrf_token %}
+    {{ form | bootstrap }}
+    <button type="submit" class="btn btn-default">Add Comment</button>
+  </form>
 </div>
+
+{% for comment in comments %}
+<div id="comment-{{comment.id}}" class="panel comment">
+  <!-- {% include "partials/post-vote-control.html" with obj_type='comments' obj=comment %} -->
+  <div class="comment-header">
+    <span class="comment-author">
+      <a href="#">{{ comment.author.username }}</a>
+    </span>
+    <span>&nbsp;</span>
+    <span>{{comment.score}} points</span>
+    <span>, </span>
+    <span class="comment-submission-time">{{ comment.submission_time | naturaltime }}</span>
+  </div>
+  <div class="comment-text">
+    <p>
+      {{ comment.text | markdown}}
+    </p>
+  </div>
+  <div class="comment-footer btn-group btn-group-sm" role="group">
+    <a class="btn">
+      <span class="glyphicon glyphicon-thumbs-up" aria-hidden="true"></span>
+      3
+    </a>
+    <a class="btn">
+      <span class="glyphicon glyphicon-thumbs-down" aria-hidden="true"></span>
+    </a>
+
+    {% if comment.indent < 12 %}
+    <a class="btn comment-action reply" href="{% url 'reply_to_comment' comment.id %}">
+      <span class="glyphicon glyphicon-share-alt" aria-hidden="true"></span>
+      reply
+    </a>
+    {% else %}
+    <span><i>replies not allowed anymore</i></span>
+    {% endif %}
+    {% if request.user.username == comment.author.username %}
+    <a class="btn" href="{% url 'edit_comment' comment.id %}">
+      <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
+      edit
+    </a>
+    {% endif %}
+    <a class="btn" href="#comment-{{comment.id}}">permalink</a>
+    {% if request.user.is_staff %}
+    <a class="btn" href="{% url 'admin:discussions_comment_change' comment.id %}">admin</a>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+
 {% endspaceless %}
 {% endblock %}
