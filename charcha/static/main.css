@@ -1,3 +1,9 @@
+div.charcha {
+  font-size: 120%;
+}
+.post-envelope {
+  display: flex;
+}
 .navbar {
   margin-bottom: -5px;
 }
@@ -21,12 +27,8 @@
 }
 .post-text {
   margin-top: 1.5rem;
-  font-size: 120%;
 }
 
-.comment-text {
-  font-size: 120%;
-}
 .comment {
   margin-top: 2rem;
 }
@@ -40,7 +42,7 @@
     color: gray;
 }
 .comment-footer {
-  margin-left: -10px;
+  margin-left: -15px;
 }
 .comment-author a {
   color: #ff5722;
@@ -50,9 +52,12 @@ a.voted {
   color: #ff5722;
 }
 
+trix-toolbar .trix-button-group--history-tools {
+  display: none;
+}
+
 .vote-control {
-    display: inline;
-    /* display: -webkit-box;
+    display: -webkit-box;
     display: -ms-flexbox;
     display: -webkit-flex;
     display: flex;
@@ -63,45 +68,44 @@ a.voted {
     -webkit-justify-content: flex-start;
     -ms-flex-justify-content: flex-start;
     text-align: center;
-    margin-top: 3px;
-    margin-right: 15px; */
+    margin-top: 25px;
+    margin-right: 10px;
 }
 .vote-button {
-    /* padding: 0;
+    padding: 0;
     background-color: #fff;
     width: 0;
     height: 0;
     border-left: 10px solid transparent;
     border-right: 10px solid transparent;
     cursor: pointer;
-    cursor: hand; */
+    cursor: hand;
 }
 .vote-button:focus {
-    /* outline: 0; */
+    outline: 0;
 }
 .upvote {
-    /* border-top: 0px;
-    border-bottom: 15px solid #DDDDDD; */
-    
+    border-top: 0px;
+    border-bottom: 15px solid #DDDDDD;
+    margin-bottom: 10px;
 }
 .downvote {
-    /* border-top: 15px solid #DDDDDD;
-    border-bottom: 0px; */
+    border-top: 15px solid #DDDDDD;
+    border-bottom: 0px;
 }
 .upvote[data-state="disabled"],
 .downvote[data-state="disabled"] {
-    /* cursor: not-allowed; */
+    cursor: not-allowed;
 }
 .upvote[data-state="voted"] {
-    /* border-top: 0px;
-    border-bottom: 15px solid #ff5722; */
+    border-top: 0px;
+    border-bottom: 15px solid #ff5722;
 }
 .downvote[data-state="voted"] {
-    /* border-top: 15px solid #ff5722;
-    border-bottom: 0px; */
+    border-top: 15px solid #ff5722;
+    border-bottom: 0px;
 }
-
-.indent-1 {} 
+ 
 .indent-2 {
     margin-left: 10px;
 }
