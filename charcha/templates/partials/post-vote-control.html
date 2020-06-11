@@ -1,4 +1,13 @@
-<div data-object-type="{{obj_type}}" data-object-id="{{obj.id}}" class="vote-control">
+<div data-object-type="{{obj_type}}" data-object-id="{{obj.id}}" class="btn-group">
+  <a class="btn vote-button upvote">
+    <span class="glyphicon glyphicon-thumbs-up" aria-hidden="true"></span>
+  </a>
+  <a class="btn vote-button downvote">
+    <span class="glyphicon glyphicon-thumbs-down" aria-hidden="true"></span>
+  </a>
+</div>
+
+<!-- <div data-object-type="{{obj_type}}" data-object-id="{{obj.id}}" class="vote-control">
     {# Unauthenticated users don't see vote button #}
     {% if not request.user.is_authenticated %}
     <button class="vote-button upvote" data-state="disabled"></button>
@@ -29,4 +38,4 @@
     <button class="vote-button upvote" data-state="enabled"></button>
     <button class="vote-button downvote" data-state="enabled"></button>
     {% endif %}
-  </div>
+  </div> -->

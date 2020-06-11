@@ -8,7 +8,7 @@
   <input name="csrfmiddlewaretoken" type="hidden" value="{{ csrf_token }}">
 </form>
 {% for post in posts %}
-<!-- {% include "partials/post-vote-control.html" with obj_type='posts' obj=post %} -->
+{% include "partials/post-vote-control.html" with obj_type='posts' obj=post %}
 <div class="post">
   <div class="post-title">
     <h3><a href="{% url 'discussion' post.id %}">{{ post.title }}</a></h3>

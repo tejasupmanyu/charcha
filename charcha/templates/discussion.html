@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% load humanize %}
-{% load bootstrap %}
 {% load markdown %}
 
 {% block title %}{{ post.title }} | Charcha{% endblock %}
@@ -8,7 +7,6 @@
 {% block content %}
 {% spaceless %}
 <div class="post">
-    <!-- {% include "partials/post-vote-control.html" with obj_type='posts' obj=post %} -->
   <div class="post-title">
     <h2>{{ post.title }}</h2>
   </div>
@@ -28,20 +26,21 @@
     </div>
   </div>
   {% if post.text %}
-  <div class="post-text">
+  <div class="panel post-text">
     <p>{{post.text | markdown}}</p>
   </div>
   {% endif %}
+  {% include "partials/post-vote-control.html" with obj_type='posts' obj=post %}
   <form method="post" action="">
     {% csrf_token %}
-    {{ form | bootstrap }}
+    <input type="hidden" id="trix-text" name="text" value="Hello, trix!"/>
+    <trix-editor class="trix-content" input="trix-text"></trix-editor>
     <button type="submit" class="btn btn-default">Add Comment</button>
   </form>
 </div>
 
 {% for comment in comments %}
-<div id="comment-{{comment.id}}" class="panel comment">
-  <!-- {% include "partials/post-vote-control.html" with obj_type='comments' obj=comment %} -->
+<div id="comment-{{comment.id}}" class="panel comment indent-{{comment.indent}}">
   <div class="comment-header">
     <span class="comment-author">
       <a href="#">{{ comment.author.username }}</a>
@@ -50,6 +49,8 @@
     <span>{{comment.score}} points</span>
     <span>, </span>
     <span class="comment-submission-time">{{ comment.submission_time | naturaltime }}</span>
+    <span><a class="btn" href="#comment-{{comment.id}}">permalink</a></span>
+    
   </div>
   <div class="comment-text">
     <p>
@@ -57,14 +58,7 @@
     </p>
   </div>
   <div class="comment-footer btn-group btn-group-sm" role="group">
-    <a class="btn">
-      <span class="glyphicon glyphicon-thumbs-up" aria-hidden="true"></span>
-      3
-    </a>
-    <a class="btn">
-      <span class="glyphicon glyphicon-thumbs-down" aria-hidden="true"></span>
-    </a>
-
+    {% include "partials/post-vote-control.html" with obj_type='comments' obj=comment %}
     {% if comment.indent < 12 %}
     <a class="btn comment-action reply" href="{% url 'reply_to_comment' comment.id %}">
       <span class="glyphicon glyphicon-share-alt" aria-hidden="true"></span>
@@ -79,7 +73,6 @@
       edit
     </a>
     {% endif %}
-    <a class="btn" href="#comment-{{comment.id}}">permalink</a>
     {% if request.user.is_staff %}
     <a class="btn" href="{% url 'admin:discussions_comment_change' comment.id %}">admin</a>
     {% endif %}

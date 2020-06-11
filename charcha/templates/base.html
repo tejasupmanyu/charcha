@@ -25,6 +25,8 @@
     <title>{% block title %}Charcha{% endblock %}</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
     <link rel="stylesheet" href="{% static "main.css" %}">
+    <link rel="stylesheet" href="{% static "trix.css" %}">
+    <script src="{% static "trix.js" %}"></script>
   </head>
   <body>
 <nav class="navbar navbar-default">
@@ -69,9 +71,9 @@
 </div>
 
 
-<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+<!-- <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-<script src="{% static "main.js" %}"></script>
+<script src="{% static "main.js" %}"></script> -->
 {% block before-body-close %}
 {% endblock %}
 </body>
