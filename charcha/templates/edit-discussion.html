@@ -7,28 +7,11 @@
 {% block content %}
 <h2>Editing Discussion</h2>
 
-<br/>
 <form method="post">
-    {% csrf_token %}
+    {% csrf_token %}    
     {{ form | bootstrap }}
+    <trix-editor class="trix-content" input="id_text"></trix-editor>
     <input type="submit" value="Edit Discussion" />
 </form>
-<br/>
-<strong>Preview</strong>
-<div class="comment-text">
-  <p id="preview">
-  </p>
-</div>
 
-{% endblock %}
-
-{% block before-body-close %}
-<script>
-    var to_markdown = function() {
-        html_content = markdown.toHTML(this.value);
-        $("#preview").html(html_content);
-    };
-    $('#id_text').bind('input propertychange', to_markdown);
-</script>
-<script src="{% static "markdown.min.js" %}"></script>
 {% endblock %}

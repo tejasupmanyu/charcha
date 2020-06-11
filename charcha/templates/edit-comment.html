@@ -9,25 +9,11 @@
 <br/>
 <form method="post">
     {% csrf_token %}
-    {{ form | bootstrap }}
+    {{ form.non_field_errors }}
+    <input type="hidden" id="trix-text" name="text" value="{{form.text.value}}"/>
+    <trix-editor class="trix-content" input="trix-text"></trix-editor>
+    {{ form.text.errors }}
     <input type="submit" value="Edit Comment" />
 </form>
-<br/>
-<strong>Preview</strong>
-<div class="comment-text">
-  <p id="preview">
-  </p>
-</div>
 
-{% endblock %}
-
-{% block before-body-close %}
-<script>
-    $("#id_text").focus();
-    $('#id_text').bind('input propertychange', function() {
-        html_content = markdown.toHTML(this.value);
-        $("#preview").html(html_content)
-    });
-</script>
-<script src="{% static "markdown.min.js" %}"></script>
 {% endblock %}

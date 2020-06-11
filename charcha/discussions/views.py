@@ -116,6 +116,7 @@ class StartDiscussionForm(forms.ModelForm):
             'title': 'Title',
             'text': 'Markdown syntax allowed'
         }
+        widgets = {'text': forms.HiddenInput()}
 
     def clean(self):
         cleaned_data = super(StartDiscussionForm, self).clean()
@@ -145,16 +146,22 @@ class StartDiscussionView(LoginRequiredMixin, View):
         else:
             return render(request, "submit.html", context={"form": form})
 
+class EditDiscussionForm(StartDiscussionForm):
+    class Meta:
+        model = Post
+        fields = ['title', 'text']
+        widgets = {'text': forms.HiddenInput()}
+
 class EditDiscussion(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
         post = get_object_or_404(Post, pk=kwargs['post_id'])
-        form = StartDiscussionForm(instance=post)
+        form = EditDiscussionForm(instance=post)
         context = {"form": form}
         return render(request, "edit-discussion.html", context=context)
 
     def post(self, request, **kwargs):
         post = get_object_or_404(Post, pk=kwargs['post_id'])
-        form = StartDiscussionForm(request.POST, instance=post)
+        form = EditDiscussionForm(request.POST, instance=post)
 
         if not form.is_valid():
             context = {"form": form}

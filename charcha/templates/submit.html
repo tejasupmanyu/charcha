@@ -8,30 +8,13 @@
 {% endblock %}
 
 {% block content %}
-<h2>New Discussion</h2>
+<h3>New Discussion</h3>
 
 <form method="post">
     {% csrf_token %}
     {{ form | bootstrap }}
+    <trix-editor class="trix-content" input="id_text"></trix-editor>
     <button type="submit" class="btn btn-default">Start Discussion</button>
 </form>
 
-<br/>
-<strong>Preview</strong>
-<div class="comment-text">
-  <p id="preview">
-  </p>
-</div>
-
-{% endblock %}
-
-{% block before-body-close %}
-<script>
-    $("#id_title").focus();
-    $('#id_text').bind('input propertychange', function() {
-        html_content = markdown.toHTML(this.value);
-        $("#preview").html(html_content)
-    });
-</script>
-<script src="{% static "markdown.min.js" %}"></script>
 {% endblock %}
