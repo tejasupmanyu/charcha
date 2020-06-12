@@ -11,9 +11,8 @@
   </div>
   <div class="post-line-2">
     <div class="post-score">
-        by {{ post.author.username }} | 
-      {{ post.score }} point{{ post.score | pluralize }} | 
-      {{ comments|length }} comment{{ comments | length | pluralize }} |
+      <span class="comment-author">
+        <a href="">{{ post.author.username }}</a></span> |
       {{ post.submission_time | naturaltime }}
     </div>
   </div>
@@ -22,10 +21,10 @@
       <p>{{post.html | safe}}</p>
     </div>
     <div class="comment-footer btn-group" role="group">
-      <!-- <a class="upvote-discussion btn" data-state="disabled" data-object-type="posts" data-object-id="post.id">
+      <a class="upvote-discussion btn" data-state="disabled" data-object-type="posts" data-object-id="post.id">
         <span class="glyphicon glyphicon-triangle-top" aria-hidden="true"></span>
         {{post.upvotes}}
-      </a> -->
+      </a>
       {% if request.user.id == post.author.id %}
       <a class="btn" href="{% url 'edit-discussion' post.id %}">
         <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
@@ -39,6 +38,9 @@
   </div>
 </div>
 
+<div class="panel">
+  <b>{{ comments|length }} response{{ comments | length | pluralize }}</b>
+</div>
 {% for comment in comments %}
 <div id="comment-{{comment.id}}" class="panel comment indent-{{comment.indent}}">
   <div class="comment-header">
