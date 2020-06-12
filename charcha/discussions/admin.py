@@ -13,14 +13,14 @@ class UserAdmin(admin.ModelAdmin):
 
 class PostAdmin(admin.ModelAdmin):
     list_display = ('category', 'title', )
-    fields = ('category', 'title', 'url', 'text', 'author', 'num_comments',
+    fields = ('category', 'title', 'url', 'html', 'author', 'num_comments',
         'upvotes', 'downvotes', 'flags')
     readonly_fields = ('num_comments', 'author')
     
 class CommentAdmin(admin.ModelAdmin):
-    list_display = ('submission_time', 'post', 'wbs', 'author', 'text')
+    list_display = ('submission_time', 'post', 'wbs', 'author', 'html')
     fields = ('post', 'parent_comment', 'author', 
-        'text', 'wbs', 'upvotes', 'downvotes', 'flags')
+        'html', 'wbs', 'upvotes', 'downvotes', 'flags')
     readonly_fields = ('post', 'parent_comment', 'wbs', 'author')
 
 class VoteAdmin(admin.ModelAdmin):

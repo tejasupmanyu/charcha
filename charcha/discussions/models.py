@@ -251,7 +251,7 @@ class Post(Votable):
     objects = PostsManager()
     title = models.CharField(max_length=120)
     url = models.URLField(blank=True)
-    text = models.TextField(blank=True, max_length=8192)
+    html = models.TextField(blank=True, max_length=8192)
     submission_time = models.DateTimeField(auto_now_add=True)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, default=1)
     num_comments = models.IntegerField(default=0)
@@ -267,9 +267,9 @@ class Post(Votable):
     def get_absolute_url(self):
         return "/discuss/%i/" % self.id
 
-    def add_comment(self, text, author):
+    def add_comment(self, html, author):
         comment = Comment()
-        comment.text = text
+        comment.html = html
         comment.post = self
         comment.wbs = _find_next_wbs(self)
         comment.author = author
@@ -308,7 +308,7 @@ class Post(Votable):
             "sub_heading": "by " + self.author.username,
             "image": self.author.avatar,
             "line1": self.title,
-            "line2": self.text[:150],
+            "line2": self.html[:150],
             "link": SERVER_URL + reverse("discussion", args=[self.id]),
             "link_title": "View Discussion"
         }
@@ -324,7 +324,7 @@ class CommentsManager(models.Manager):
         from django.db import connection
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT c.id, c.text, u.id, u.username, c.submission_time,
+                SELECT c.id, c.html, u.id, u.username, c.submission_time,
                 c.wbs, length(c.wbs)/5 as indent, 
                 c.upvotes, c.downvotes, c.flags,
                 c.upvotes - c.downvotes as score,
@@ -354,7 +354,7 @@ class CommentsManager(models.Manager):
             comments = []
             for row in cursor.fetchall():
                 comment = self.model(
-                        id = row[0], text = row[1], 
+                        id = row[0], html = row[1], 
                         submission_time = row[4],
                         wbs = row[5],
                         upvotes = row[7], downvotes=row[8],
@@ -383,7 +383,7 @@ class Comment(Votable):
         'self', 
         null=True, blank=True,
         on_delete=models.PROTECT)
-    text = models.TextField(max_length=8192)
+    html = models.TextField(max_length=8192)
     submission_time = models.DateTimeField(auto_now_add=True)
 
     # wbs helps us to track the comments as a tree
@@ -393,9 +393,9 @@ class Comment(Votable):
     # 2. We allow threaded comments upto 12 levels
     wbs = models.CharField(max_length=60)
 
-    def reply(self, text, author):
+    def reply(self, html, author):
         comment = Comment()
-        comment.text = text
+        comment.html = html
         comment.post = self.post
         comment.parent_comment = self
         comment.wbs = _find_next_wbs(self.post, parent_wbs=self.wbs)
@@ -413,7 +413,7 @@ class Comment(Votable):
             "sub_heading": "by " + self.author.username,
             "image": self.author.avatar,
             "line1": self.post.title,
-            "line2": self.text[:150],
+            "line2": self.html[:150],
             "link": SERVER_URL + reverse("discussion", args=[self.post.id]) + "#comment-" + str(self.id),
             "link_title": "View Comment"
         }
@@ -424,7 +424,7 @@ class Comment(Votable):
             notify_space(watcher.gchat_space, event)
 
     def __str__(self):
-        return self.text
+        return self.html
 
 def _find_next_wbs(post, parent_wbs=None):
     if not parent_wbs:

@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
 {% load bootstrap %}
-{% load markdown %}
 {% block title %}Edit Discussion{% endblock %}
 
 {% block content %}
@@ -10,7 +9,7 @@
 <form method="post">
     {% csrf_token %}    
     {{ form | bootstrap }}
-    <trix-editor class="trix-content" input="id_text"></trix-editor>
+    <trix-editor class="trix-content" input="id_html"></trix-editor>
     <input type="submit" value="Edit Discussion" />
 </form>
 

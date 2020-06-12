@@ -15,6 +15,8 @@ import os
 
 import dj_database_url
 import dj_email_url
+from html_sanitizer.sanitizer import sanitize_href, bold_span_to_strong, \
+    italic_span_to_em, tag_replacer, target_blank_noopener
 
 def is_ec2_linux():
     """Detect if we are running on an EC2 Linux Instance
@@ -313,3 +315,43 @@ WHITENOISE_ROOT = os.path.join(PROJECT_ROOT, 'public')
 STATICFILES_DIRS = [
     os.path.join(PROJECT_ROOT, 'static'),
 ]
+
+HTML_SANITIZERS = {
+    'default': {
+        "tags": {
+            "a", "h1", "h2", "h3", "strong", "em", "p", "ul", "ol",
+            "li", "br", "sub", "sup", "hr",
+            "figure", "figcaption", "img", "span","del", "blockquote", "pre"
+        },
+        "attributes": {
+            "a": ("href", "name", "target", "title", "id", "rel", "data-trix-attachment",),
+            "figure": ("class", ),
+            "figcaption": ("class", ),
+            "img": ("width", "height",),
+            "span": ("class", )
+        },
+        "empty": {"hr", "a", "br"},
+        "separate": {"a", "p", "li", "br"},
+        "whitespace": {"br"},
+        "keep_typographic_whitespace": False,
+        "add_nofollow": True,
+        "autolink": True,
+        "sanitize_href": sanitize_href,
+        "element_preprocessors": [
+            # convert span elements into em/strong if a matching style rule
+            # has been found. strong has precedence, strong & em at the same
+            # time is not supported
+            bold_span_to_strong,
+            italic_span_to_em,
+            tag_replacer("h1", "h3"),
+            tag_replacer("h2", "h3"),
+            tag_replacer("h4", "h3"),
+            tag_replacer("b", "strong"),
+            tag_replacer("i", "em"),
+            tag_replacer("form", "p"),
+            target_blank_noopener,
+        ],
+        "element_postprocessors": [],
+        "is_mergeable": lambda e1, e2: True,
+    },
+}

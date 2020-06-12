@@ -20,6 +20,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import UPVOTE, DOWNVOTE, FLAG
 from .models import Post, Comment, Vote, User, Category
 from .models import update_gchat_space
+from html_sanitizer.django import get_sanitizer
 
 @login_required
 def homepage(request):
@@ -32,13 +33,11 @@ def homepage(request):
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
-        fields = ['text']
+        fields = ['html']
         labels = {
-            'text': 'Your Comment',
+            'html': 'Your Comment',
         }
-        help_texts = {
-            'text': 'Markdown Supported',
-        }
+        widgets = {'html': forms.HiddenInput()}
 
 class DiscussionView(LoginRequiredMixin, View):
     def get(self, request, post_id):
@@ -55,7 +54,7 @@ class DiscussionView(LoginRequiredMixin, View):
                     request.user)
         form = CommentForm(request.POST)
         if form.is_valid():
-            comment = post.add_comment(form.cleaned_data['text'], request.user)
+            comment = post.add_comment(form.cleaned_data['html'], request.user)
             post_url = reverse('discussion', args=[post.id])
             return HttpResponseRedirect(post_url)
         else:
@@ -79,7 +78,7 @@ class ReplyToComment(LoginRequiredMixin, View):
             context = {"post": post, "parent_comment": parent_comment, "form": form}
             return render(request, "reply-to-comment.html", context=context)
 
-        comment = parent_comment.reply(form.cleaned_data['text'], request.user)
+        comment = parent_comment.reply(form.cleaned_data['html'], request.user)
         post_url = reverse('discussion', args=[parent_comment.post.id])
         return HttpResponseRedirect(post_url)
 
@@ -105,26 +104,20 @@ class EditComment(LoginRequiredMixin, View):
 class StartDiscussionForm(forms.ModelForm):
     class Meta:
         model = Post
-        fields = ['category', 'title', 'text']
+        fields = ['category', 'title', 'html']
         labels = {
             'category': 'Category',
             'title': 'Title',
-            'text': 'Details'
+            'html': 'Details'
         }
-        help_text = {
-            'category': 'Category',
-            'title': 'Title',
-            'text': 'Markdown syntax allowed'
-        }
-        widgets = {'text': forms.HiddenInput()}
+        widgets = {'html': forms.HiddenInput()}
 
     def clean(self):
         cleaned_data = super(StartDiscussionForm, self).clean()
-        url = cleaned_data.get("url")
-        text = cleaned_data.get("text")
-        if not (url or text):
+        html = cleaned_data.get("html")
+        if not html:
             raise forms.ValidationError(
-                "URL and Text are both empty. Please enter at least one of them."
+                "HTML cannot be empty"
             )
         return cleaned_data
 
@@ -149,8 +142,8 @@ class StartDiscussionView(LoginRequiredMixin, View):
 class EditDiscussionForm(StartDiscussionForm):
     class Meta:
         model = Post
-        fields = ['title', 'text']
-        widgets = {'text': forms.HiddenInput()}
+        fields = ['title', 'html']
+        widgets = {'html': forms.HiddenInput()}
 
 class EditDiscussion(LoginRequiredMixin, View):
     def get(self, request, **kwargs):

@@ -1,18 +1,14 @@
 {% extends "base.html" %}
 {% load static %}
 {% load bootstrap %}
-{% load markdown %}
 {% block title %}Edit Comment{% endblock %}
 
 {% block content %}
-<h2>Replying to:</h2>
-<br/>
+<h3>Edit Comment:</h3>
 <form method="post">
     {% csrf_token %}
-    {{ form.non_field_errors }}
-    <input type="hidden" id="trix-text" name="text" value="{{form.text.value}}"/>
-    <trix-editor class="trix-content" input="trix-text"></trix-editor>
-    {{ form.text.errors }}
+    {{ form | bootstrap }}
+    <trix-editor class="trix-content" input="id_html"></trix-editor>
     <input type="submit" value="Edit Comment" />
 </form>
 

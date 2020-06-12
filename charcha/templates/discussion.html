@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% load humanize %}
-{% load markdown %}
-
+{% load bootstrap %}
 {% block title %}{{ post.title }} | Charcha{% endblock %}
 
 {% block content %}
@@ -23,7 +22,7 @@
   </div>
   <div class="panel">
     <div class="post-text">
-      <p>{{post.text | markdown}}</p>
+      <p>{{post.html | safe}}</p>
     </div>
     <div class="comment-footer btn-group" role="group">
       <!-- <a class="upvote-discussion btn" data-state="disabled" data-object-type="posts" data-object-id="post.id">
@@ -58,7 +57,7 @@
   </div>
   <div class="comment-text">
     <p>
-      {{ comment.text | markdown}}
+      {{ comment.html | safe}}
     </p>
   </div>
   <div class="comment-footer btn-group" role="group">
@@ -91,10 +90,8 @@
   <h4>Your Response:</h4>
   <form method="post" action="">
     {% csrf_token %}
-    {{ form.non_field_errors }}
-    <input type="hidden" id="trix-text" name="text" value=""/>
-    <trix-editor class="trix-content" input="trix-text"></trix-editor>
-    {{ form.text.errors }}
+    {{ form | bootstrap }}
+    <trix-editor class="trix-content" input="id_html"></trix-editor>
     <button type="submit" class="btn btn-default">Reply</button>
   </form>
 </div>
