@@ -9,6 +9,23 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import F
 from django.urls import reverse
 from .bot import notify_space
+from bleach.sanitizer import Cleaner
+
+cleaner = Cleaner(
+    tags=['a', 'b', 'blockquote', 'code', 'em', 'i', 'li', 'ol', 'strong', 'ul',
+        'h1', 'h2', 'h3', 'p', 'br', 'sub', 'sup', 'hr',
+        'div', 'figure', 'figcaption', 'img', 'span', 'del', 'pre'
+    ],
+    attributes={
+            "a": ("href", "name", "target", "title", "id", "rel", "data-trix-attachment",),
+            "figure": ("class", ),
+            "figcaption": ("class", ),
+            "img": ("width", "height",),
+            "span": ("class", ),
+        },
+    strip=False
+)
+
 
 # TODO: Read this from settings 
 SERVER_URL = "https://charcha.hashedin.com"
@@ -257,6 +274,7 @@ class Post(Votable):
     num_comments = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
+        self.html = cleaner.clean(self.html)
         is_create = False
         if not self.pk:
             is_create = True
@@ -392,6 +410,10 @@ class Comment(Votable):
     # 1. We only allow 9999 comments at each level
     # 2. We allow threaded comments upto 12 levels
     wbs = models.CharField(max_length=60)
+
+    def save(self, *args, **kwargs):
+        self.html = cleaner.clean(self.html)
+        super().save(*args, **kwargs)
 
     def reply(self, html, author):
         comment = Comment()

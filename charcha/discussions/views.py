@@ -20,7 +20,6 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import UPVOTE, DOWNVOTE, FLAG
 from .models import Post, Comment, Vote, User, Category
 from .models import update_gchat_space
-from html_sanitizer.django import get_sanitizer
 
 @login_required
 def homepage(request):
