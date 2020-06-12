@@ -12,9 +12,6 @@
   <div class="post-line-2">
     <div class="post-score">
         by {{ post.author.username }} | 
-        {% if request.user.id == post.author.id %}
-        <a href="">edit</a> | 
-        {% endif %}
       {{ post.score }} point{{ post.score | pluralize }} | 
       {{ comments|length }} comment{{ comments | length | pluralize }} |
       {{ post.submission_time | naturaltime }}
@@ -73,7 +70,7 @@
     {% else %}
     <span><i>replies not allowed anymore</i></span>
     {% endif %}
-    {% if request.user.username == comment.author.username %}
+    {% if request.user.id == comment.author.id %}
     <a class="btn" href="{% url 'edit_comment' comment.id %}">
       <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
       edit
