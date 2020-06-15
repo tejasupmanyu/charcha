@@ -1,5 +1,7 @@
-div.charcha {
-  font-size: 120%;
+@media(min-width:768px){
+  div.charcha {
+    font-size: 120%;
+  }
 }
 .post-envelope {
   display: flex;

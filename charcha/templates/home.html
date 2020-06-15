@@ -4,9 +4,6 @@
 
 {% block content %}
 {% spaceless %}
-<form id="defaults">
-  <input name="csrfmiddlewaretoken" type="hidden" value="{{ csrf_token }}">
-</form>
 {% for post in posts %}
 <div class="post-envelope">
   {% include "partials/post-vote-control.html" with obj_type='posts' obj=post %}
