@@ -10,6 +10,7 @@ from django.db.models import F
 from django.urls import reverse
 from .bot import notify_space
 from bleach.sanitizer import Cleaner
+import re
 
 cleaner = Cleaner(
     tags=['a', 'b', 'blockquote', 'code', 'em', 'i', 'li', 'ol', 'strong', 'ul',
@@ -25,6 +26,11 @@ cleaner = Cleaner(
         },
     strip=False
 )
+regex = re.compile(r"<h[1-6]>([^<^>]+)</h[1-6]>")
+
+def clean_and_normalize_html(html):
+    html = cleaner.clean(html)
+    return re.sub(regex, r"<h3>\1</h3>", html)
 
 
 # TODO: Read this from settings 
@@ -274,7 +280,7 @@ class Post(Votable):
     num_comments = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
-        self.html = cleaner.clean(self.html)
+        self.html = clean_and_normalize_html(self.html)
         is_create = False
         if not self.pk:
             is_create = True
@@ -412,7 +418,7 @@ class Comment(Votable):
     wbs = models.CharField(max_length=60)
 
     def save(self, *args, **kwargs):
-        self.html = cleaner.clean(self.html)
+        self.html = clean_and_normalize_html(self.html)
         super().save(*args, **kwargs)
 
     def reply(self, html, author):

@@ -1,4 +1,5 @@
 import json
+import re
 
 from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
 from django.views import View 
@@ -20,6 +21,11 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import UPVOTE, DOWNVOTE, FLAG
 from .models import Post, Comment, Vote, User, Category
 from .models import update_gchat_space
+
+regex = re.compile(r"<h[1-6]>([^<^>]+)</h[1-6]>")
+def prepare_html_for_edit(html):
+    'Converts all heading tags to h1 because trix only understands h1 tags'
+    return re.sub(regex, r"<h1>\1</h1>", html)    
 
 @login_required
 def homepage(request):
@@ -84,6 +90,7 @@ class ReplyToComment(LoginRequiredMixin, View):
 class EditComment(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
         comment = get_object_or_404(Comment, pk=kwargs['id'])
+        comment.html = prepare_html_for_edit(comment.html)
         form = CommentForm(instance=comment)
         context = {"form": form}
         return render(request, "edit-comment.html", context=context)
@@ -147,6 +154,7 @@ class EditDiscussionForm(StartDiscussionForm):
 class EditDiscussion(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
         post = get_object_or_404(Post, pk=kwargs['post_id'])
+        post.html = prepare_html_for_edit(post.html)
         form = EditDiscussionForm(instance=post)
         context = {"form": form}
         return render(request, "edit-discussion.html", context=context)
