@@ -13,7 +13,7 @@
     <div class="post-score">
       <span class="comment-author">
         <a href="">{{ post.author.username }}</a></span> |
-      {{ post.submission_time | naturaltime }}
+      {{ post.submission_time | naturalday }}
     </div>
   </div>
   <div class="panel">
@@ -21,10 +21,7 @@
       <p>{{post.html | safe}}</p>
     </div>
     <div class="comment-footer btn-group" role="group">
-      <a class="upvote-discussion btn" data-state="disabled" data-object-type="posts" data-object-id="post.id">
-        <span class="glyphicon glyphicon-triangle-top" aria-hidden="true"></span>
-        {{post.upvotes}}
-      </a>
+      {% include "partials/post-vote-control.html" with obj_type='posts' obj=post %}
       {% if request.user.id == post.author.id %}
       <a class="btn" href="{% url 'edit-discussion' post.id %}">
         <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
@@ -60,10 +57,7 @@
     </p>
   </div>
   <div class="comment-footer btn-group" role="group">
-    <!-- <a class="btn" data-state="disabled">
-      <span class="glyphicon glyphicon-triangle-top" aria-hidden="true"></span>
-      2
-    </a> -->
+    {% include "partials/post-vote-control.html" with obj_type='comments' obj=comment %}
     {% if comment.indent < 12 %}
     <a class="btn comment-action reply" href="{% url 'reply_to_comment' comment.id %}">
       <span class="glyphicon glyphicon-share-alt" aria-hidden="true"></span>

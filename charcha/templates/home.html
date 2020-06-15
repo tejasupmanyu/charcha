@@ -16,7 +16,7 @@
           by {{ post.author }} |
           {{ post.num_comments }} comment{{ post.num_comments|pluralize }} |
           {{ post.score }} point{{ post.score | pluralize }} | 
-          {{ post.submission_time | naturaltime }}
+          {{ post.submission_time | naturalday }}
           {% if request.user.is_staff %}
           | <a href="{% url 'admin:discussions_post_change' post.id %}">manage</a>
           {% endif %}

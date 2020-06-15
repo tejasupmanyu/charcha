@@ -1,27 +1,27 @@
-<div data-object-type="{{obj_type}}" data-object-id="{{obj.id}}" class="vote-control">
-    {# Users are not allowed to vote on their own content #}
-    {% if request.user.id == obj.author.id %}
-    <button class="vote-button upvote" data-state="disabled"></button>
-    <button class="vote-button downvote" data-state="disabled"></button>
-    
-    {# Same content upvoted and downvoted. Shouldn't happen in general #}
-    {% elif obj.is_upvoted and obj.is_downvoted %}
-    <button class="vote-button upvote" data-state="voted"></button>
-    <button class="vote-button downvote" data-state="voted"></button>
+<div data-object-type="{{obj_type}}" data-object-id="{{obj.id}}" class="btn-group vote-control" role="group">
+  {# Users are not allowed to vote on their own content #}
+  {% if request.user.id == obj.author.id %}
+  <button class="btn vote-button upvote" data-state="disabled"></button>
+  <button class="btn vote-button downvote" data-state="disabled"></button>
   
-    {# If already upvoted, disable downvote button #}
-    {% elif obj.is_upvoted %}
-    <button class="vote-button upvote" data-state="voted"></button>
-    <button class="vote-button downvote" data-state="disabled"></button>
-    
-    {# If already downvoted, disable upvote button #}
-    {% elif obj.is_downvoted %}
-    <button class="vote-button upvote" data-state="disabled"></button>
-    <button class="vote-button downvote" data-state="voted"></button>
-    
-    {# Enable both upvote and downvote #}
-    {% else %}
-    <button class="vote-button upvote" data-state="enabled"></button>
-    <button class="vote-button downvote" data-state="enabled"></button>
-    {% endif %}
-  </div>
+  {# Same content upvoted and downvoted. Shouldn't happen in general #}
+  {% elif obj.is_upvoted and obj.is_downvoted %}
+  <button class="btn vote-button upvote" data-state="voted"></button>
+  <button class="btn vote-button downvote" data-state="voted"></button>
+
+  {# If already upvoted, disable downvote button #}
+  {% elif obj.is_upvoted %}
+  <button class="btn vote-button upvote" data-state="voted"></button>
+  <button class="btn vote-button downvote" data-state="disabled"></button>
+  
+  {# If already downvoted, disable upvote button #}
+  {% elif obj.is_downvoted %}
+  <button class="btn vote-button upvote" data-state="disabled"></button>
+  <button class="btn vote-button downvote" data-state="voted"></button>
+  
+  {# Enable both upvote and downvote #}
+  {% else %}
+  <button class="btn vote-button upvote" data-state="enabled"></button>
+  <button class="btn vote-button downvote" data-state="enabled"></button>
+  {% endif %}
+</div>

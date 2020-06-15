@@ -1,10 +1,12 @@
-@media(min-width:768px){
-  div.charcha {
-    font-size: 120%;
-  }
+h3 {
+  font-size: 20px;
+}
+h2 {
+  font-size: 26px;
 }
 .post-envelope {
   display: flex;
+  margin-bottom: -8px;
 }
 .navbar {
   margin-bottom: -5px;
@@ -26,9 +28,6 @@
 }
 .post-line-2 {
   margin-top: -8px;
-}
-.post-text {
-  margin-top: 1.5rem;
 }
 
 .comment {
@@ -58,54 +57,63 @@ trix-toolbar .trix-button-group--history-tools {
   display: none;
 }
 
-.vote-control {
-    display: -webkit-box;
-    display: -ms-flexbox;
-    display: -webkit-flex;
-    display: flex;
-    flex-direction: column;
-    -webkit-flex-direction: column;
-    -ms-flex-direction: column;
-    justify-content: flex-start;
-    -webkit-justify-content: flex-start;
-    -ms-flex-justify-content: flex-start;
-    text-align: center;
-    margin-top: 25px;
-    margin-right: 10px;
+.post-envelope .vote-control {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  display: flex;
+  flex-direction: column;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  justify-content: flex-start;
+  -webkit-justify-content: flex-start;
+  -ms-flex-justify-content: flex-start;
+  text-align: center;
+  margin-top: 23px;
+  margin-right: 10px;
+}
+.comment-footer .vote-control {
+  margin-top: 10px;
+}
+.comment-footer .vote-button {
+  margin-left: 15px !important;
+}
+.comment-footer .downvote {
+  margin-right: 8px !important;
 }
 .vote-button {
-    padding: 0;
-    background-color: #fff;
-    width: 0;
-    height: 0;
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    cursor: pointer;
-    cursor: hand;
+  padding: 0;
+  background-color: #fff;
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  cursor: pointer;
+  cursor: hand;
 }
 .vote-button:focus {
-    outline: 0;
+  outline: 0;
 }
 .upvote {
-    border-top: 0px;
-    border-bottom: 15px solid #DDDDDD;
-    margin-bottom: 10px;
+  border-top: 0px;
+  border-bottom: 15px solid #DDDDDD;
+  margin-bottom: 10px;
 }
 .downvote {
-    border-top: 15px solid #DDDDDD;
-    border-bottom: 0px;
+  border-top: 15px solid #DDDDDD;
+  border-bottom: 0px;
 }
 .upvote[data-state="disabled"],
 .downvote[data-state="disabled"] {
-    cursor: not-allowed;
+  cursor: not-allowed;
 }
 .upvote[data-state="voted"] {
-    border-top: 0px;
-    border-bottom: 15px solid #ff5722;
+  border-top: 0px;
+  border-bottom: 15px solid #ff5722;
 }
 .downvote[data-state="voted"] {
-    border-top: 15px solid #ff5722;
-    border-bottom: 0px;
+  border-top: 15px solid #ff5722;
+  border-bottom: 0px;
 }
  
 .indent-2 {

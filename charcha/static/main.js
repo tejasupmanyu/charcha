@@ -40,6 +40,11 @@ $('.vote-button').click(function(){
     else if (state === 'voted') {
         action = "undovote";
     }
+    else {
+        // upvote and downvote are both disabled
+        // so do nothing
+        return;
+    }
 
     // Optimistic UI
     // First update the UI, assuming that the request will succeed
