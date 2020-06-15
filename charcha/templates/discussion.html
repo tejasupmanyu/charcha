@@ -13,7 +13,7 @@
     <div class="post-score">
       <span class="comment-author">
         <a href="">{{ post.author.username }}</a></span> |
-      {{ post.submission_time | naturalday }}
+      {{ post.submission_time | naturalday }} | {{post.score}} point{{ post.score | pluralize }}
     </div>
   </div>
   <div class="panel">
