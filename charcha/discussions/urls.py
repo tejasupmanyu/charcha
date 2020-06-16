@@ -20,5 +20,8 @@ urlpatterns = [
     url(r'^api/comments/(?P<comment_id>\d+)/upvote$', views.upvote_comment, name="upvote_comment"),
     url(r'^api/comments/(?P<comment_id>\d+)/downvote$', views.downvote_comment, name="downvote_comment"),
     url(r'^api/comments/(?P<comment_id>\d+)/undovote$', views.undo_vote_on_comment, name="undo_vote_on_comment"),
+
+    url(r'^api/upload$', views.FileUploadView.as_view(), name="upload-files"),
+
     url(r'^chatbot', views.google_chatbot, name="Webhook for google chatbot")
 ]

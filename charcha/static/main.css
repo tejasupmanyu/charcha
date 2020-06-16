@@ -33,7 +33,9 @@ h2 {
 .comment {
   margin-top: 2rem;
 }
-
+.comment-text {
+  margin-top: 8px;
+}
 .comment-header {
   margin-bottom: -5px;
 }

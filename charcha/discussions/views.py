@@ -1,7 +1,9 @@
 import json
 import re
+import os
+from uuid import uuid4
 
-from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
+from django.http import HttpResponse, JsonResponse, HttpResponseRedirect, HttpResponseBadRequest
 from django.views import View 
 from django.views.decorators.http import require_http_methods
 from django import forms
@@ -11,12 +13,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.contenttypes.models import ContentType
-
 from django.db.models import F
 from django.forms.models import model_to_dict
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django.core.files.storage import DefaultStorage
 
 from .models import UPVOTE, DOWNVOTE, FLAG
 from .models import Post, Comment, Vote, User, Category
@@ -251,3 +253,28 @@ def myprofile(request):
 
 def profile(request, userid):
     return render(request, "profile.html", context={"user": {"id": userid}})
+
+class FileUploadView(LoginRequiredMixin, View):
+    def post(self, request, **kwargs):
+        file_obj = request.FILES.get('file')
+        filename = request.POST['key']
+        extension = filename.split(".")[-1].lower()
+        if extension not in ('png', 'jpeg', 'jpg', 'svg', 'gif'):
+            return HttpResponseBadRequest("Files of type " + extension + " are not supported")
+        
+        # TODO: Add validation here e.g. file size/type check
+        # TODO: Potentially resize image
+
+        # organize a path for the file in bucket
+        file_path = '{uuid}/{userid}.{extension}'.\
+            format(userid=request.user.id, 
+            uuid=uuid4(), extension=extension)
+        
+        media_storage = DefaultStorage()
+        media_storage.save(file_path, file_obj)
+        file_url = media_storage.url(file_path)
+
+        return JsonResponse({
+            'message': 'OK',
+            'fileUrl': file_url,
+        })

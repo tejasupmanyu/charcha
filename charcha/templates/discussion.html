@@ -17,8 +17,8 @@
     </div>
   </div>
   <div class="panel">
-    <div class="post-text">
-      <p>{{post.html | safe}}</p>
+    <div class="post-text trix-content">
+      {{post.html | safe}}
     </div>
     <div class="comment-footer btn-group" role="group">
       {% include "partials/post-vote-control.html" with obj_type='posts' obj=post %}
@@ -51,10 +51,8 @@
     <span> | </span>
     <span><a href="#comment-{{comment.id}}">permalink</a></span>  
   </div>
-  <div class="comment-text">
-    <p>
+  <div class="comment-text trix-content">
       {{ comment.html | safe}}
-    </p>
   </div>
   <div class="comment-footer btn-group" role="group">
     {% include "partials/post-vote-control.html" with obj_type='comments' obj=comment %}

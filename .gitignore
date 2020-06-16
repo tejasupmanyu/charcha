@@ -12,3 +12,4 @@ staticfiles
 
 *.log.*
 *.log
+media/*

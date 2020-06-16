@@ -15,13 +15,13 @@ import re
 cleaner = Cleaner(
     tags=['a', 'b', 'blockquote', 'code', 'em', 'i', 'li', 'ol', 'strong', 'ul',
         'h1', 'h2', 'h3', 'p', 'br', 'sub', 'sup', 'hr',
-        'div', 'figure', 'figcaption', 'img', 'span', 'del', 'pre'
+        'div', 'figure', 'figcaption', 'img', 'span', 'del', 'pre', 'img',
     ],
     attributes={
             "a": ("href", "name", "target", "title", "id", "rel", "data-trix-attachment",),
-            "figure": ("class", ),
+            "figure": ("class", "data-trix-attachment", "data-trix-content-type", "data-trix-attributes"),
             "figcaption": ("class", ),
-            "img": ("width", "height",),
+            "img": ("width", "height", 'src'),
             "span": ("class", ),
         },
     strip=False
