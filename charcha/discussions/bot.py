@@ -26,8 +26,8 @@ def _load_chat_client():
 # chat_client can be None, in which case we will not send any notifications via chat
 _chat_client = _load_chat_client()
 
-def members(spaceid):
-  return _chat_client.spaces().members().list(parent=spaceid).execute()
+def members(spaceid, pageToken=None):
+  return _chat_client.spaces().members().list(parent=spaceid, pageSize=1000, pageToken=pageToken).execute()
 
 def notify_space(spaceid, event):
     message = _create_message(event)
