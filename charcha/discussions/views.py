@@ -21,8 +21,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import DefaultStorage
 
 from .models import UPVOTE, DOWNVOTE, FLAG
-from .models import Post, Comment, Vote, User, Category
+from .models import Post, Comment, Vote, User
 from .models import update_gchat_space
+from charcha.teams.models import Team
 
 regex = re.compile(r"<h[1-6]>([^<^>]+)</h[1-6]>")
 def prepare_html_for_edit(html):
@@ -112,9 +113,9 @@ class EditComment(LoginRequiredMixin, View):
 class StartDiscussionForm(forms.ModelForm):
     class Meta:
         model = Post
-        fields = ['category', 'title', 'html']
+        fields = ['team', 'title', 'html']
         labels = {
-            'category': 'Category',
+            'team': 'Team',
             'title': 'Title',
             'html': 'Details'
         }
@@ -132,7 +133,7 @@ class StartDiscussionForm(forms.ModelForm):
 class StartDiscussionView(LoginRequiredMixin, View):
     def get(self, request):
         form = StartDiscussionForm(initial={"author": request.user})
-        form.fields['category'].queryset = Category.objects.all()
+        form.fields['team'].queryset = Team.objects.my_teams(request.user)
         return render(request, "submit.html", context={"form": form})
 
     def post(self, request):

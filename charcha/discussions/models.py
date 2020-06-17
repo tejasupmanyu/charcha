@@ -9,6 +9,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import F
 from django.urls import reverse
 from .bot import notify_space
+from charcha.teams.models import Team
 from bleach.sanitizer import Cleaner
 import re
 
@@ -253,18 +254,6 @@ class PostsManager(models.Manager):
         }
         return mapping[vote_type]
 
-
-class Category(models.Model):
-    class Meta:
-        db_table = "categories"
-        verbose_name_plural = "Categories"
-
-    name = models.CharField(max_length=50)
-    gchat_space = models.CharField(max_length=50, default=None, null=True)
-
-    def __str__(self):
-        return self.name
-
 class Post(Votable):
     class Meta:
         db_table = "posts"
@@ -276,7 +265,7 @@ class Post(Votable):
     url = models.URLField(blank=True)
     html = models.TextField(blank=True, max_length=8192)
     submission_time = models.DateTimeField(auto_now_add=True)
-    category = models.ForeignKey(Category, on_delete=models.PROTECT, default=1)
+    team = models.ForeignKey(Team, on_delete=models.PROTECT, default=1)
     num_comments = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
@@ -336,7 +325,7 @@ class Post(Votable):
             "link": SERVER_URL + reverse("discussion", args=[self.id]),
             "link_title": "View Discussion"
         }
-        space_id = self.category.gchat_space
+        space_id = self.team.gchat_space
         notify_space(space_id, event)
 
     def __str__(self):

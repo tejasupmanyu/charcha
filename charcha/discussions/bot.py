@@ -30,6 +30,8 @@ def members(spaceid, pageToken=None):
   return _chat_client.spaces().members().list(parent=spaceid, pageSize=1000, pageToken=pageToken).execute()
 
 def notify_space(spaceid, event):
+    if not _chat_client:
+      return
     message = _create_message(event)
     try:
       _chat_client.spaces().messages() \
