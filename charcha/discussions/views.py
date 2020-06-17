@@ -274,6 +274,13 @@ class FileUploadView(LoginRequiredMixin, View):
         media_storage.save(file_path, file_obj)
         file_url = media_storage.url(file_path)
 
+        # The file url contains a signature, which expires in a few hours
+        # In our case, we have made the S3 file public for anyone who has the url
+        # Which means, the file is accessible without the signature
+        # So we simply strip out the signature from the url - i.e. everything after the ?
+
+        file_url = file_url.split('?')[0]
+        
         return JsonResponse({
             'message': 'OK',
             'fileUrl': file_url,
