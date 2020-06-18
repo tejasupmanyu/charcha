@@ -49,7 +49,7 @@ class TeamManager(models.Manager):
         return Team.objects.all()
     
     def upsert(self, space, name):
-        team, created = Team.objects.get_or_create(gchat_space=space, defaults={"name": name})
+        team, created = Team.objects.update_or_create(gchat_space=space, defaults={"name": name})
         return team
 
 class Team(models.Model):
