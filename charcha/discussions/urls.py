@@ -23,5 +23,4 @@ urlpatterns = [
 
     url(r'^api/upload$', views.FileUploadView.as_view(), name="upload-files"),
 
-    url(r'^chatbot', views.google_chatbot, name="Webhook for google chatbot")
 ]

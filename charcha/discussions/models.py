@@ -8,7 +8,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import F
 from django.urls import reverse
-from .bot import notify_space
+from charcha.teams.bot import notify_space
 from charcha.teams.models import Team
 from bleach.sanitizer import Cleaner
 import re

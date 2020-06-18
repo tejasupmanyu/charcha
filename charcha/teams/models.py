@@ -1,5 +1,7 @@
+from itertools import chain
 from django.db import models
 from django.conf import settings
+from django.db import connection, transaction
 
 class GchatUser(models.Model):
     '''
@@ -27,8 +29,11 @@ class GchatUser(models.Model):
 
     class Meta:
         db_table = "gchat_users"
-        index_together = [
-            ["key",],
+        indexes = [
+            models.Index(fields=["key",]),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['key',], name="gchat_user_unique_key")
         ]
     
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, default=None)
@@ -37,18 +42,62 @@ class GchatUser(models.Model):
     key = models.CharField(max_length=100)
     display_name = models.CharField(max_length=100)
 
+
+
 class TeamManager(models.Manager):
     def my_teams(self, user):
         return Team.objects.all()
+    
+    def upsert(self, space, name):
+        team, created = Team.objects.get_or_create(gchat_space=space, defaults={"name": name})
+        return team
 
 class Team(models.Model):
     'A Team is created by adding charcha bot to a room or private message in google chat'
     class Meta:
         db_table = "teams"
+        indexes = [
+            models.Index(fields=['gchat_space'])
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['gchat_space',], name="team_unique_gchat_space")
+        ]
 
     objects = TeamManager()
     name = models.CharField(max_length=100)
     gchat_space = models.CharField(max_length=50, default=None, null=True)
+
+    @transaction.atomic
+    def sync_team_members(self, members):
+        # memers is a list of (key, display_name) tuples
+        insert_query = "INSERT INTO incoming_members(key, display_name) VALUES " + ",".join(["(%s, %s)"] * len(members))
+        insert_bind_params = list(chain.from_iterable(members))
+        with connection.cursor() as c:
+            c.execute("""
+                CREATE TEMPORARY TABLE incoming_members
+                    (key varchar(100), display_name varchar(100)) 
+                ON COMMIT DROP;
+            """)
+            c.execute(insert_query, insert_bind_params)
+            c.execute("""
+                INSERT INTO gchat_users(key, display_name)
+                SELECT key, display_name FROM incoming_members
+                ON CONFLICT ON CONSTRAINT gchat_user_unique_key DO NOTHING;
+            """)
+            c.execute("""
+                INSERT INTO team_members(team_id, gchat_user_id)
+                SELECT %s, g.id
+                FROM gchat_users g JOIN incoming_members im on g.key = im.key
+                ON CONFLICT ON CONSTRAINT team_member_unique_gchat_user DO NOTHING;
+            """, [self.id])
+
+            c.execute("""
+                DELETE FROM team_members t
+                WHERE t.team_id = %s AND NOT EXISTS (
+                    SELECT 'x' from gchat_users g join incoming_members im on g.key = im.key
+                    WHERE g.id = t.gchat_user_id
+                );
+            """, [self.id])
 
     def __str__(self):
         return self.name
@@ -56,11 +105,12 @@ class Team(models.Model):
 class TeamMember(models.Model):
     class Meta:
         db_table = "team_members"
-        index_together = [
-            ["user",],
-            ["gchat_user",],
+        indexes = [
+            models.Index(fields=["gchat_user",]),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['team', 'gchat_user',], name="team_member_unique_gchat_user")
         ]
     team = models.ForeignKey(Team, on_delete=models.PROTECT)
     gchat_user = models.ForeignKey(GchatUser, on_delete=models.PROTECT)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, default=None)
-
+    

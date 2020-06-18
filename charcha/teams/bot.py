@@ -26,8 +26,16 @@ def _load_chat_client():
 # chat_client can be None, in which case we will not send any notifications via chat
 _chat_client = _load_chat_client()
 
-def members(spaceid, pageToken=None):
-  return _chat_client.spaces().members().list(parent=spaceid, pageSize=1000, pageToken=pageToken).execute()
+def members(spaceid):
+    members = []
+    page_token = None
+    is_first_call = True
+    while is_first_call or page_token:
+        is_first_call = False
+        response = _chat_client.spaces().members().list(parent=spaceid, pageSize=1000, pageToken=page_token).execute()
+        page_token = response['nextPageToken']
+        members.extend(response['memberships'])
+    return members
 
 def notify_space(spaceid, event):
     if not _chat_client:
