@@ -19,6 +19,7 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import DefaultStorage
+from django.core.exceptions import PermissionDenied
 
 from .models import UPVOTE, DOWNVOTE, FLAG
 from .models import Post, Comment, Vote, User
@@ -93,6 +94,9 @@ class ReplyToComment(LoginRequiredMixin, View):
 class EditComment(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
         comment = get_object_or_404(Comment, pk=kwargs['id'])
+        if comment.author.id != request.user.id:
+            raise PermissionDenied()
+
         comment.html = prepare_html_for_edit(comment.html)
         form = CommentForm(instance=comment)
         context = {"form": form}
@@ -100,13 +104,17 @@ class EditComment(LoginRequiredMixin, View):
 
     def post(self, request, **kwargs):
         comment = get_object_or_404(Comment, pk=kwargs['id'])
+        if request.user.id != comment.author.id:
+            raise forms.ValidationError(
+                "Cannot edit someone else's comment!"
+            )
         form = CommentForm(request.POST, instance=comment)
 
         if not form.is_valid():
             context = {"form": form}
             return render(request, "edit-comment.html", context=context)
         else:
-            form.save()
+            comment.edit_comment(form.cleaned_data['html'], request.user)
         post_url = reverse('discussion', args=[comment.post.id])
         return HttpResponseRedirect(post_url)
 
@@ -157,6 +165,8 @@ class EditDiscussionForm(StartDiscussionForm):
 class EditDiscussion(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
         post = get_object_or_404(Post, pk=kwargs['post_id'])
+        if post.author.id != request.user.id:
+            raise PermissionDenied()
         post.html = prepare_html_for_edit(post.html)
         form = EditDiscussionForm(instance=post)
         context = {"form": form}
@@ -164,13 +174,17 @@ class EditDiscussion(LoginRequiredMixin, View):
 
     def post(self, request, **kwargs):
         post = get_object_or_404(Post, pk=kwargs['post_id'])
+        if request.user.id != post.author.id:
+            raise forms.ValidationError(
+                "Cannot edit someone else's post!"
+            )
         form = EditDiscussionForm(request.POST, instance=post)
 
         if not form.is_valid():
             context = {"form": form}
             return render(request, "edit-discussion.html", context=context)
         else:
-            form.save()
+            post.edit_post(form.cleaned_data['title'], form.cleaned_data['html'], request.user)
         post_url = reverse('discussion', args=[post.id])
         return HttpResponseRedirect(post_url)
 

@@ -11,6 +11,7 @@ from django.urls import reverse
 from charcha.teams.bot import notify_space
 from charcha.teams.models import Team
 from bleach.sanitizer import Cleaner
+from django.core.exceptions import PermissionDenied
 import re
 
 cleaner = Cleaner(
@@ -280,6 +281,14 @@ class Post(Votable):
     def get_absolute_url(self):
         return "/discuss/%i/" % self.id
 
+    def edit_post(self, title, html, author):
+        if author.id != self.author.id:
+            raise PermissionDenied("User " + str(author.id) + " trying to edit post " + str(self.id)
+                    + ", and is being denied because it was created by " + str(self.author.id))
+        self.title = title
+        self.html = html
+        self.save()
+
     def add_comment(self, html, author):
         comment = Comment()
         comment.html = html
@@ -423,6 +432,14 @@ class Comment(Votable):
         comment.post.save()
         comment.on_new_comment()
         return comment
+
+
+    def edit_comment(self, html, author):
+        if author.id != self.author.id:
+            raise PermissionDenied("User " + str(author.id) + " trying to edit comment " + str(self.id) 
+                    + ", and is being denied because it was created by " + str(self.author.id))
+        self.html = html
+        self.save()
 
     def on_new_comment(self):
         event = {

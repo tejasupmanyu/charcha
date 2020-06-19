@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from collections import defaultdict
 from django.test import TestCase
 from django.contrib.auth.models import AnonymousUser
+from django.core.exceptions import PermissionDenied
 from .models import Post, Vote, Comment, User
 from . import models
 
@@ -37,7 +38,7 @@ class DiscussionTests(TestCase):
 
     def new_discussion(self, user, title):
         post = Post(title=title,
-            text="Does not matter",
+            html="Does not matter",
             author=user)
         post.save()
         return post
@@ -114,7 +115,7 @@ class DiscussionTests(TestCase):
         swethas_comment = rameshs_comment.reply(_c3, self.swetha)
         rameshs_response = amits_comment.reply(_c4, self.ramesh)
 
-        comments = [c.text for c in 
+        comments = [c.html for c in 
                     Comment.objects.best_ones_first(post.id, self.ramesh.id)]
 
         self.assertEquals(comments, [_c1, _c2, _c4, _c3])
@@ -122,6 +123,26 @@ class DiscussionTests(TestCase):
         # check if num_comments in post object is updated
         post = Post.objects.get(pk=post.id)
         self.assertEquals(post.num_comments, 4)
+
+    def test_cannot_edit_someone_elses_comment(self):
+        post = self.new_discussion(self.ramesh, "Can I edit someone else's comment?")
+        post.edit_post("this is the new title", "this is the new body", self.ramesh)
+        with self.assertRaises(PermissionDenied):
+            post.edit_post("Amit trying to edit Ramesh's post", "this is the new body", self.amit)
+
+        # Reload post object to confirm it got saved
+        post = Post.objects.get(id=post.id)
+        self.assertEqual(post.title, "this is the new title")
+        self.assertEqual(post.html, "this is the new body")
+
+        rameshs_comment = post.add_comment("I think it should not be possible", self.ramesh)
+        rameshs_comment.edit_comment("EDIT; I should be able to edit my own comment", self.ramesh)
+        with self.assertRaises(PermissionDenied):
+            rameshs_comment.edit_comment("Amit trying to edit Ramesh's comment", self.amit)
+        
+        # Reload comment object to confirm it got saved
+        rameshs_comment = Comment.objects.get(id=rameshs_comment.id)
+        self.assertEqual(rameshs_comment.html, "EDIT; I should be able to edit my own comment")
 
     def test_notifications(self):
         with record_notifications() as notifications:
