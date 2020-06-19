@@ -46,7 +46,13 @@ class GchatUser(models.Model):
 
 class TeamManager(models.Manager):
     def my_teams(self, user):
-        return Team.objects.all()
+        teams = Team.objects.raw("""
+            SELECT t.id, t.name 
+            FROM teams t join team_members tm on t.id = tm.team_id 
+                JOIN gchat_users g on tm.gchat_user_id = g.id
+            WHERE g.user_id = %s"""
+        , [user.id])
+        return [(team.id, team.name) for team in teams]
     
     def upsert(self, space, name):
         team, created = Team.objects.update_or_create(gchat_space=space, defaults={"name": name})

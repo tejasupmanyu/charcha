@@ -213,6 +213,7 @@ class PostsManager(models.Manager):
         posts = Post.objects\
             .annotate(score=F('upvotes') - F('downvotes'))\
             .select_related("author")\
+            .select_related("team")\
             .order_by("-submission_time")[:100]
         if user:
             posts = self._append_votes_by_user(posts, user)
