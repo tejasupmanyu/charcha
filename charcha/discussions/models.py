@@ -189,6 +189,14 @@ class Votable(models.Model):
             voter=user, type_of_vote=type_of_vote)\
             .exists()
 
+class TeamPosts(models.Model):
+    'Through model to maintain many-to-many relationship between Post and Team'
+    class Meta:
+        db_table = "team_posts"
+    
+    team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    post = models.ForeignKey('Post', on_delete=models.PROTECT)
+
 class PostsManager(models.Manager):
     def get_post_with_my_votes(self, post_id, user):
         post = Post.objects\
@@ -213,7 +221,6 @@ class PostsManager(models.Manager):
         posts = Post.objects\
             .annotate(score=F('upvotes') - F('downvotes'))\
             .select_related("author")\
-            .select_related("team")\
             .order_by("-submission_time")[:100]
         if user:
             posts = self._append_votes_by_user(posts, user)
@@ -267,7 +274,7 @@ class Post(Votable):
     url = models.URLField(blank=True)
     html = models.TextField(blank=True, max_length=8192)
     submission_time = models.DateTimeField(auto_now_add=True)
-    team = models.ForeignKey(Team, on_delete=models.PROTECT, default=1)
+    teams = models.ManyToManyField(Team, through=TeamPosts, related_name="posts")
     num_comments = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
@@ -335,8 +342,9 @@ class Post(Votable):
             "link": SERVER_URL + reverse("discussion", args=[self.id]),
             "link_title": "View Discussion"
         }
-        space_id = self.team.gchat_space
-        notify_space(space_id, event)
+        for team in self.teams.all():
+            space_id = team.gchat_space
+            notify_space(space_id, event)
 
     def __str__(self):
         return self.title

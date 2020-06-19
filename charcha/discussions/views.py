@@ -121,9 +121,9 @@ class EditComment(LoginRequiredMixin, View):
 class StartDiscussionForm(forms.ModelForm):
     class Meta:
         model = Post
-        fields = ['team', 'title', 'html']
+        fields = ['teams', 'title', 'html']
         labels = {
-            'team': 'Team',
+            'teams': 'Teams',
             'title': 'Title',
             'html': 'Details'
         }
@@ -141,7 +141,7 @@ class StartDiscussionForm(forms.ModelForm):
 class StartDiscussionView(LoginRequiredMixin, View):
     def get(self, request):
         form = StartDiscussionForm(initial={"author": request.user})
-        form.fields['team'].choices = Team.objects.my_teams(request.user)
+        form.fields['teams'].choices = Team.objects.my_teams(request.user)
         return render(request, "submit.html", context={"form": form})
 
     def post(self, request):
@@ -150,11 +150,12 @@ class StartDiscussionView(LoginRequiredMixin, View):
             post = form.save(commit=False)
             post.author = request.user
             post.save()
-
+            # Important to call save_m2m, so that the teams are saved as well
+            form.save_m2m()
             new_post_url = reverse('discussion', args=[post.id])
             return HttpResponseRedirect(new_post_url)
         else:
-            form.fields['team'].choices = Team.objects.my_teams(request.user)
+            form.fields['teams'].choices = Team.objects.my_teams(request.user)
             return render(request, "submit.html", context={"form": form})
 
 class EditDiscussionForm(StartDiscussionForm):
