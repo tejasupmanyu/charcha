@@ -223,13 +223,30 @@ class PostsManager(models.Manager):
                     post.is_downvoted = True
         return post
 
-    def recent_posts_with_my_votes(self, user=None):
-        posts = Post.objects\
-            .annotate(score=F('upvotes') - F('downvotes'))\
-            .select_related("author")\
-            .order_by("-submission_time")[:100]
-        if user:
-            posts = self._append_votes_by_user(posts, user)
+    def recent_posts_with_my_votes(self, user):
+        posts = Post.objects.raw("""
+            SELECT p.id, p.title, 
+                p.upvotes, p.downvotes, p.flags,
+                (p.upvotes - p.downvotes) as score, 
+                p.title, p.html, p.submission_time, p.num_comments, 
+                json_build_object('id', a.id, 'username', a.username) as _author
+            FROM posts p JOIN users a on p.author_id = a.id
+            WHERE EXISTS (
+                SELECT 'x' FROM team_posts tp JOIN team_members tm ON tp.team_id = tm.team_id
+                WHERE tm.gchat_user_id = (select g.id from gchat_users g where g.user_id = %s) 
+                and tp.post_id = p.id
+            )
+            ORDER BY p.submission_time DESC
+            LIMIT 100;
+        """, [user.id])
+
+        # Our query returns author and team objects as dictionary
+        # But Django expects them to proper User and Team objects
+        # So we do the conversion over here 
+        for p in posts:
+            p.author = User(**p._author)
+            
+        posts = self._append_votes_by_user(posts, user)
         return posts
 
     def _append_votes_by_user(self, posts, user):
@@ -283,6 +300,34 @@ class Post(Votable):
     teams = models.ManyToManyField(Team, through=TeamPosts, related_name="posts")
     num_comments = models.IntegerField(default=0)
 
+    def can_view(self, user):
+        'User can view the post if he belongs to any team(s) the post is a part of'
+        result = Post.objects.raw("""
+            SELECT p.id FROM posts p
+            WHERE EXISTS (
+                SELECT 'x' FROM team_posts tp JOIN team_members tm on tp.team_id = tm.team_id
+                    WHERE tp.post_id = p.id AND tm.gchat_user_id = (
+                        SELECT id from gchat_users where user_id = %s
+                    )
+            )
+            AND p.id = %s;
+        """, [user.id, self.id])
+        if result:
+            return True
+        else:
+            return False
+
+    def can_edit(self, user):
+        return self.author.id == user.id
+    
+    def check_view_permission(self, user):
+        if not self.can_view(user):
+            raise PermissionDenied("View denied on post " + str(self.id) + " to user " + str(user.id))
+    
+    def check_edit_permission(self, user):
+        if not self.can_edit(user):
+            raise PermissionDenied("Edit denied on post " + str(self.id) + " to user " + str(user.id))
+
     def save(self, *args, **kwargs):
         self.html = clean_and_normalize_html(self.html)
         is_create = False
@@ -296,9 +341,6 @@ class Post(Votable):
         return "/discuss/%i/" % self.id
 
     def edit_post(self, title, html, author):
-        if author.id != self.author.id:
-            raise PermissionDenied("User " + str(author.id) + " trying to edit post " + str(self.id)
-                    + ", and is being denied because it was created by " + str(self.author.id))
         self.title = title
         self.html = html
         self.save()
@@ -430,6 +472,21 @@ class Comment(Votable):
     # 2. We allow threaded comments upto 12 levels
     wbs = models.CharField(max_length=60)
 
+    def can_view(self, user):
+        'User can view the comment if he can view the parent post'
+        return self.post.can_view(user)
+
+    def can_edit(self, user):
+        return self.author.id == user.id
+    
+    def check_view_permission(self, user):
+        if not self.can_view(user):
+            raise PermissionDenied("View denied on comment " + self.id + " to user " + user.id)
+    
+    def check_edit_permission(self, user):
+        if not self.can_edit(user):
+            raise PermissionDenied("Edit denied on comment " + self.id + " to user " + user.id)
+    
     def save(self, *args, **kwargs):
         self.html = clean_and_normalize_html(self.html)
         super().save(*args, **kwargs)
@@ -448,11 +505,7 @@ class Comment(Votable):
         comment.on_new_comment()
         return comment
 
-
     def edit_comment(self, html, author):
-        if author.id != self.author.id:
-            raise PermissionDenied("User " + str(author.id) + " trying to edit comment " + str(self.id) 
-                    + ", and is being denied because it was created by " + str(self.author.id))
         self.html = html
         self.save()
 

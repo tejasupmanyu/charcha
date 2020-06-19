@@ -33,10 +33,7 @@ def prepare_html_for_edit(html):
 
 @login_required
 def homepage(request):
-    user = None
-    if request.user.is_authenticated:
-        user = request.user
-    posts = Post.objects.recent_posts_with_my_votes(user)
+    posts = Post.objects.recent_posts_with_my_votes(request.user)
     return render(request, "home.html", context={"posts": posts})
 
 class CommentForm(forms.ModelForm):
@@ -52,6 +49,7 @@ class DiscussionView(LoginRequiredMixin, View):
     def get(self, request, post_id):
         post = Post.objects.get_post_with_my_votes(post_id, 
                     request.user)
+        post.check_view_permission(request.user)
         comments = Comment.objects.best_ones_first(post_id, 
                         request.user.id)
         form = CommentForm()
@@ -60,7 +58,9 @@ class DiscussionView(LoginRequiredMixin, View):
 
     def post(self, request, post_id):
         post = Post.objects.get_post_with_my_votes(post_id, 
-                    request.user)
+                    request.user)        
+        # You can add a comment as long as you have view permission on the post
+        post.check_view_permission(request.user)
         form = CommentForm(request.POST)
         if form.is_valid():
             comment = post.add_comment(form.cleaned_data['html'], request.user)
@@ -74,6 +74,10 @@ class ReplyToComment(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
         parent_comment = get_object_or_404(Comment, pk=kwargs['id'])
         post = parent_comment.post
+
+        # You can reply as long as you have view permission on the post
+        post.check_view_permission(request.user)
+        
         form = CommentForm()
         context = {"post": post, "parent_comment": parent_comment, "form": form}
         return render(request, "reply-to-comment.html", context=context)
@@ -87,6 +91,8 @@ class ReplyToComment(LoginRequiredMixin, View):
             context = {"post": post, "parent_comment": parent_comment, "form": form}
             return render(request, "reply-to-comment.html", context=context)
 
+        # You can reply as long as you have view permission on the post
+        parent_comment.post.check_view_permission(request.user)
         comment = parent_comment.reply(form.cleaned_data['html'], request.user)
         post_url = reverse('discussion', args=[parent_comment.post.id])
         return HttpResponseRedirect(post_url)
@@ -94,8 +100,7 @@ class ReplyToComment(LoginRequiredMixin, View):
 class EditComment(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
         comment = get_object_or_404(Comment, pk=kwargs['id'])
-        if comment.author.id != request.user.id:
-            raise PermissionDenied()
+        comment.check_edit_permission(request.user)
 
         comment.html = prepare_html_for_edit(comment.html)
         form = CommentForm(instance=comment)
@@ -104,6 +109,7 @@ class EditComment(LoginRequiredMixin, View):
 
     def post(self, request, **kwargs):
         comment = get_object_or_404(Comment, pk=kwargs['id'])
+        comment.check_edit_permission(request.user)
         if request.user.id != comment.author.id:
             raise forms.ValidationError(
                 "Cannot edit someone else's comment!"
@@ -150,6 +156,8 @@ class StartDiscussionView(LoginRequiredMixin, View):
             post = form.save(commit=False)
             post.author = request.user
             post.save()
+            
+            # TODO: Can only create a discussion in a team that the user belongs to
             # Important to call save_m2m, so that the teams are saved as well
             form.save_m2m()
             new_post_url = reverse('discussion', args=[post.id])
@@ -167,8 +175,7 @@ class EditDiscussionForm(StartDiscussionForm):
 class EditDiscussion(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
         post = get_object_or_404(Post, pk=kwargs['post_id'])
-        if post.author.id != request.user.id:
-            raise PermissionDenied()
+        post.check_edit_permission(request.user)
         post.html = prepare_html_for_edit(post.html)
         form = EditDiscussionForm(instance=post)
         context = {"form": form}
@@ -176,10 +183,7 @@ class EditDiscussion(LoginRequiredMixin, View):
 
     def post(self, request, **kwargs):
         post = get_object_or_404(Post, pk=kwargs['post_id'])
-        if request.user.id != post.author.id:
-            raise forms.ValidationError(
-                "Cannot edit someone else's post!"
-            )
+        post.check_edit_permission(request.user)
         form = EditDiscussionForm(request.POST, instance=post)
 
         if not form.is_valid():
@@ -194,6 +198,7 @@ class EditDiscussion(LoginRequiredMixin, View):
 @require_http_methods(['POST'])
 def upvote_post(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
+    post.check_view_permission(request.user)
     post.upvote(request.user)
     return HttpResponse('OK')
 
@@ -201,6 +206,7 @@ def upvote_post(request, post_id):
 @require_http_methods(['POST'])
 def downvote_post(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
+    post.check_view_permission(request.user)
     post.downvote(request.user)
     return HttpResponse('OK')
 
@@ -208,6 +214,7 @@ def downvote_post(request, post_id):
 @require_http_methods(['POST'])
 def undo_vote_on_post(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
+    post.check_view_permission(request.user)
     post.undo_vote(request.user)
     return HttpResponse('OK')
 
@@ -215,6 +222,7 @@ def undo_vote_on_post(request, post_id):
 @require_http_methods(['POST'])
 def upvote_comment(request, comment_id):
     comment = get_object_or_404(Comment, pk=comment_id)
+    comment.check_view_permission(request.user)
     comment.upvote(request.user)
     return HttpResponse('OK')
 
@@ -222,6 +230,7 @@ def upvote_comment(request, comment_id):
 @require_http_methods(['POST'])
 def downvote_comment(request, comment_id):
     comment = get_object_or_404(Comment, pk=comment_id)
+    comment.check_view_permission(request.user)
     comment.downvote(request.user)
     return HttpResponse('OK')
 
@@ -229,6 +238,7 @@ def downvote_comment(request, comment_id):
 @require_http_methods(['POST'])
 def undo_vote_on_comment(request, comment_id):
     comment = get_object_or_404(Comment, pk=comment_id)
+    comment.check_view_permission(request.user)
     comment.undo_vote(request.user)
     return HttpResponse('OK')
 
@@ -236,6 +246,7 @@ def undo_vote_on_comment(request, comment_id):
 def myprofile(request):
     return render(request, "profile.html", context={})
 
+@login_required
 def profile(request, userid):
     return render(request, "profile.html", context={"user": {"id": userid}})
 
