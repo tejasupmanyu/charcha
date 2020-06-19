@@ -193,7 +193,13 @@ class TeamPosts(models.Model):
     'Through model to maintain many-to-many relationship between Post and Team'
     class Meta:
         db_table = "team_posts"
-    
+        indexes = [
+            models.Index(fields=["team", "post"]),
+            models.Index(fields=["post", "team"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['team', 'post',], name="team_posts_unique_constraint")
+        ]    
     team = models.ForeignKey(Team, on_delete=models.PROTECT)
     post = models.ForeignKey('Post', on_delete=models.PROTECT)
 

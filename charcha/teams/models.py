@@ -112,10 +112,10 @@ class TeamMember(models.Model):
     class Meta:
         db_table = "team_members"
         indexes = [
-            models.Index(fields=["gchat_user",]),
+            models.Index(fields=["gchat_user", "team"]),
         ]
         constraints = [
-            models.UniqueConstraint(fields=['team', 'gchat_user',], name="team_member_unique_gchat_user")
+            models.UniqueConstraint(fields=['team', 'gchat_user',], name="team_member_unique_gchat_user"),
         ]
     team = models.ForeignKey(Team, on_delete=models.PROTECT)
     gchat_user = models.ForeignKey(GchatUser, on_delete=models.PROTECT)
