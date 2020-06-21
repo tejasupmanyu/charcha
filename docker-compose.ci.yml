@@ -1,0 +1,34 @@
+version: '3'
+services:
+  charchadb:
+    image: postgres:9.6.18
+    environment:
+      POSTGRES_PASSWORD: charchapassword
+  charcha:
+    build:
+      context: ./
+      dockerfile: dev.Dockerfile
+    image: charcha
+    ports:
+    - "5000:5000"
+    volumes: 
+    - "./charcha:/code/charcha"
+    environment:
+      DATABASE_URL: postgres://postgres:charchapassword@charchadb:5432/postgres
+      DEBUG: False
+      DJANGO_SETTINGS_MODULE: charcha.settings.common
+    depends_on: 
+      - charchadb
+      - migratedb
+  # tests:
+  #   image: python:3.7.7-slim
+  #   environment: 
+  #     BASE_URL: http://charcha:5000/
+  #   volumes: 
+  #     - "./requirements.test.txt:/code/requirements.test.txt"
+  #     - "./tests:/code/tests"
+  #     - "./squealy-home/private.pem:/code/squealy-home/private.pem"
+  #   depends_on: 
+  #     - charcha
+  #     - charcha-db
+  #   command: bash -c "pip install --no-cache-dir -r /code/requirements.test.txt && sleep 30s && python -m unittest discover -s /code/ -p *.py"

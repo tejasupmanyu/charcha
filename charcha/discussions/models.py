@@ -334,8 +334,6 @@ class Post(Votable):
         if not self.pk:
             is_create = True
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        if is_create:
-            self.on_new_post()
 
     def get_absolute_url(self):
         return "/discuss/%i/" % self.id

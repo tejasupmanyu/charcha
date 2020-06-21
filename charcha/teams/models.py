@@ -117,6 +117,6 @@ class TeamMember(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['team', 'gchat_user',], name="team_member_unique_gchat_user"),
         ]
-    team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    team = models.ForeignKey(Team, on_delete=models.PROTECT, related_name="members")
     gchat_user = models.ForeignKey(GchatUser, on_delete=models.PROTECT)
     

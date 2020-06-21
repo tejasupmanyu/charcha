@@ -156,10 +156,10 @@ class StartDiscussionView(LoginRequiredMixin, View):
             post = form.save(commit=False)
             post.author = request.user
             post.save()
-            
             # TODO: Can only create a discussion in a team that the user belongs to
             # Important to call save_m2m, so that the teams are saved as well
             form.save_m2m()
+            post.on_new_post()
             new_post_url = reverse('discussion', args=[post.id])
             return HttpResponseRedirect(new_post_url)
         else:
