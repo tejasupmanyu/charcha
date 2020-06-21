@@ -94,6 +94,15 @@ class Vote(models.Model):
         ))
     submission_time = models.DateTimeField(auto_now_add=True)
 
+class VotableManager(models.Manager):
+    def get(self, **kwargs):
+        if 'requester' not in kwargs:
+            raise PermissionDenied("requester not provided")
+        requester = kwargs.pop('requester')
+        obj = super().get(**kwargs)
+        obj.check_view_permission(requester)
+        return obj
+
 class Votable(models.Model):
     """ An object on which people would want to vote
         Post and Comment are concrete classes
@@ -111,18 +120,23 @@ class Votable(models.Model):
     flags = models.IntegerField(default=0)
 
     def upvote(self, user):
+        self.check_view_permission(user)
         self._vote(user, UPVOTE)
 
     def downvote(self, user):
+        self.check_view_permission(user)
         self._vote(user, DOWNVOTE)
 
     def flag(self, user):
+        self.check_view_permission(user)
         self._vote(user, FLAG)
 
     def unflag(self, user):
+        self.check_view_permission(user)
         raise Exception("not yet implemented")
 
     def undo_vote(self, user):
+        self.check_view_permission(user)
         content_type = ContentType.objects.get_for_model(self)
         votes = Vote.objects.filter(
             content_type=content_type.id,
@@ -203,11 +217,21 @@ class TeamPosts(models.Model):
     team = models.ForeignKey(Team, on_delete=models.PROTECT)
     post = models.ForeignKey('Post', on_delete=models.PROTECT)
 
-class PostsManager(models.Manager):
+class PostsManager(VotableManager):
+    def new_post(self, author, post, teams):
+        # TODO: must be a member of all teams
+        post.author = author
+        post.save()
+        for team in teams:
+            TeamPosts(post=post, team=team).save()
+        post.on_new_post()
+        return post
+
     def get_post_with_my_votes(self, post_id, user):
         post = Post.objects\
             .annotate(score=F('upvotes') - F('downvotes'))\
             .select_related("author").get(pk=post_id)
+        post.check_view_permission(user)
 
         if user and user.is_authenticated:
             content_type = ContentType.objects.get_for_model(Post)
@@ -339,11 +363,14 @@ class Post(Votable):
         return "/discuss/%i/" % self.id
 
     def edit_post(self, title, html, author):
+        self.check_edit_permission(author)
         self.title = title
         self.html = html
         self.save()
 
     def add_comment(self, html, author):
+        # You can add a comment as long as you have view permission on the post
+        self.check_view_permission(author)
         comment = Comment()
         comment.html = html
         comment.post = self
@@ -395,8 +422,9 @@ class Post(Votable):
     def __str__(self):
         return self.title
 
-class CommentsManager(models.Manager):
-    def best_ones_first(self, post_id, user_id):
+class CommentsManager(VotableManager):
+    def best_ones_first(self, post, user):
+        post.check_view_permission(user)
         comment_type = ContentType.objects.get_for_model(Comment)
         from django.db import connection
         with connection.cursor() as cursor:
@@ -424,9 +452,9 @@ class CommentsManager(models.Manager):
                 ) down on c.id = down.comment_id
                 WHERE c.post_id = %s
                 ORDER BY c.wbs
-            """, [comment_type.id, user_id, 
-                    comment_type.id, user_id, 
-                    post_id])
+            """, [comment_type.id, user.id, 
+                    comment_type.id, user.id, 
+                    post.id])
             
             comments = []
             for row in cursor.fetchall():
@@ -479,17 +507,19 @@ class Comment(Votable):
     
     def check_view_permission(self, user):
         if not self.can_view(user):
-            raise PermissionDenied("View denied on comment " + self.id + " to user " + user.id)
+            raise PermissionDenied("View denied on comment " + str(self.id) + " to user " + str(user.id))
     
     def check_edit_permission(self, user):
         if not self.can_edit(user):
-            raise PermissionDenied("Edit denied on comment " + self.id + " to user " + user.id)
+            raise PermissionDenied("Edit denied on comment " + str(self.id) + " to user " + str(user.id))
     
     def save(self, *args, **kwargs):
         self.html = clean_and_normalize_html(self.html)
         super().save(*args, **kwargs)
 
     def reply(self, html, author):
+        # You can reply as long as you have view permission on the post
+        self.post.check_view_permission(author)
         comment = Comment()
         comment.html = html
         comment.post = self.post
@@ -504,6 +534,7 @@ class Comment(Votable):
         return comment
 
     def edit_comment(self, html, author):
+        self.check_edit_permission(author)
         self.html = html
         self.save()
 

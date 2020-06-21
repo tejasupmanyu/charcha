@@ -1,5 +1,6 @@
 import unittest
 from contextlib import contextmanager
+from django.test import Client
 from collections import defaultdict
 from django.test import TransactionTestCase, TestCase
 from django.contrib.auth.models import AnonymousUser
@@ -60,29 +61,28 @@ class DiscussionTests(TransactionTestCase):
         self.universe = _create_team("universe", everyone)
         self.martians = _create_team("martians", martians)
 
-    def new_discussion(self, user, title, team):
+    def new_discussion(self, author, title, team):
         post = Post(title=title,
             html="Does not matter",
-            author=user)
-        post.save()
-        post.teams.add(team)
+            author=author)
+        post = Post.objects.new_post(author, post, [team])
         return post
-    
+
     def test_I_cant_vote_for_me(self):
         post = self.new_discussion(self.ramesh, "Ramesh's Biography", self.universe)
         self.assertEquals(post.upvotes, 0)
         post.upvote(self.ramesh)
-        post = Post.objects.get(pk=post.id)
+        post = Post.objects.get(pk=post.id, requester=self.ramesh)
         self.assertEquals(post.upvotes, 0)
 
     def test_double_voting(self):
         post = self.new_discussion(self.ramesh, "Ramesh's Biography", self.universe)
         self.assertEquals(post.upvotes, 0)
         post.upvote(self.amit)
-        post = Post.objects.get(pk=post.id)
+        post = Post.objects.get(pk=post.id, requester=self.amit)
         self.assertEquals(post.upvotes, 1)
         post.upvote(self.amit)
-        post = Post.objects.get(pk=post.id)
+        post = Post.objects.get(pk=post.id, requester=self.amit)
         self.assertEquals(post.upvotes, 1)
 
     def test_voting_on_home_page(self):
@@ -134,15 +134,14 @@ class DiscussionTests(TransactionTestCase):
         rameshs_response = amits_comment.reply(_c4, self.ramesh)
 
         comments = [c.html for c in 
-                    Comment.objects.best_ones_first(post.id, self.ramesh.id)]
+                    Comment.objects.best_ones_first(post, self.ramesh)]
 
         self.assertEquals(comments, [_c1, _c2, _c4, _c3])
 
         # check if num_comments in post object is updated
-        post = Post.objects.get(pk=post.id)
+        post = Post.objects.get(pk=post.id, requester=self.ramesh)
         self.assertEquals(post.num_comments, 4)
 
-    @unittest.skip
     def test_cannot_edit_someone_elses_comment(self):
         post = self.new_discussion(self.ramesh, "Can I edit someone else's comment?", self.universe)
         post.edit_post("this is the new title", "this is the new body", self.ramesh)
@@ -150,7 +149,7 @@ class DiscussionTests(TransactionTestCase):
             post.edit_post("Amit trying to edit Ramesh's post", "this is the new body", self.amit)
 
         # Reload post object to confirm it got saved
-        post = Post.objects.get(id=post.id)
+        post = Post.objects.get(id=post.id, requester=self.ramesh)
         self.assertEqual(post.title, "this is the new title")
         self.assertEqual(post.html, "this is the new body")
 
@@ -160,10 +159,9 @@ class DiscussionTests(TransactionTestCase):
             rameshs_comment.edit_comment("Amit trying to edit Ramesh's comment", self.amit)
         
         # Reload comment object to confirm it got saved
-        rameshs_comment = Comment.objects.get(id=rameshs_comment.id)
+        rameshs_comment = Comment.objects.get(id=rameshs_comment.id, requester=self.ramesh)
         self.assertEqual(rameshs_comment.html, "EDIT; I should be able to edit my own comment")
 
-    @unittest.skip
     def test_notifications(self):
         with record_notifications() as notifications:
             # Expect a single notification to broadcast when a new post is created
@@ -188,3 +186,4 @@ class DiscussionTests(TransactionTestCase):
             self.assertEqual(len(notifications['amit']), 1, msg="People who upvote must get a private notifcation")
             self.assertEqual(len(notifications['swetha']), 0, 
                     msg="Author of comment must not get notified about her own comment")
+
