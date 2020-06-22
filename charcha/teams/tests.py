@@ -1,6 +1,8 @@
+import unittest
 from django.test import TestCase
 from charcha.discussions.tests import BaseDiscussionTests
 from .models import Team
+from .views import sync_team as sync_team_view
 
 def to_sync_format(members):
     return [(m.username, m.username) for m in members]
@@ -28,3 +30,11 @@ class TeamSynchronizationTests(BaseDiscussionTests):
         self.assertEqual(len(team.members.all()), 2)
         self.assertTeamHasUsers(team, [self.amit, self.swetha])
         self.assertTeamDoesNotHaveUsers(team, [self.ramesh])
+
+    @unittest.skip
+    def test_team_sync_view(self):
+        'This test actually calls google APIs, so skipping it'
+        sync_team_view("spaces/AAAAHNB6wZ0", 'leadership')
+        team = Team.objects.get(name="leadership")
+        for m in team.members.all():
+            print(m.gchat_user.display_name)
