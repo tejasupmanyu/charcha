@@ -36,7 +36,7 @@ class GchatUser(models.Model):
             models.UniqueConstraint(fields=['key',], name="gchat_user_unique_key")
         ]
     
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, default=None)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, default=None, related_name="gchat_user")
     # Maps to name in google hangout's model
     # See https://developers.google.com/hangouts/chat/reference/rest/v1/User
     key = models.CharField(max_length=100)
