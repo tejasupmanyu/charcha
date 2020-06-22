@@ -42,7 +42,7 @@ def _create_team(teamname, members):
     team.sync_team_members(to_sync_format(members))
     return team
 
-class DiscussionTests(TransactionTestCase):
+class BaseDiscussionTests(TransactionTestCase):
     def setUp(self):
         self._create_users()
         self._create_teams()
@@ -68,6 +68,7 @@ class DiscussionTests(TransactionTestCase):
         post = Post.objects.new_post(author, post, [team])
         return post
 
+class DiscussionTests(BaseDiscussionTests):
     def test_I_cant_vote_for_me(self):
         post = self.new_discussion(self.ramesh, "Ramesh's Biography", self.universe)
         self.assertEquals(post.upvotes, 0)
@@ -186,4 +187,9 @@ class DiscussionTests(TransactionTestCase):
             self.assertEqual(len(notifications['amit']), 1, msg="People who upvote must get a private notifcation")
             self.assertEqual(len(notifications['swetha']), 0, 
                     msg="Author of comment must not get notified about her own comment")
+
+class SecurityTests(BaseDiscussionTests):
+    def test_only_team_members_can_view_post(self):
+        with self.assertRaises(PermissionDenied):
+            self.new_discussion(self.ramesh, "Ramesh is not a martian", self.martians)
 

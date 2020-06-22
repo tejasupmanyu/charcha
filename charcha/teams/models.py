@@ -53,7 +53,23 @@ class TeamManager(models.Manager):
             WHERE g.user_id = %s"""
         , [user.id])
         return [(team.id, team.name) for team in teams]
-    
+
+    def belongs_to_all_teams(self, user, teams):
+        team_ids = [t.id for t in teams]
+        in_clause = ["%s"] * len(team_ids)
+        in_clause = ",".join(in_clause)
+
+        my_teams = Team.objects.raw("""
+            SELECT t.id FROM teams t join team_members tm on t.id = tm.team_id
+                JOIN gchat_users g on tm.gchat_user_id = g.id
+            WHERE g.user_id = %s and t.id in (""" + in_clause + ')'
+        , [user.id] + team_ids)
+
+        if len(my_teams) != len(team_ids):
+            return False
+        else: 
+            return True
+
     def upsert(self, space, name):
         team, created = Team.objects.update_or_create(gchat_space=space, defaults={"name": name})
         return team

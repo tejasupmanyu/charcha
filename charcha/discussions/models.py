@@ -219,7 +219,10 @@ class TeamPosts(models.Model):
 
 class PostsManager(VotableManager):
     def new_post(self, author, post, teams):
-        # TODO: must be a member of all teams
+        if not Team.objects.belongs_to_all_teams(author, teams):
+            raise PermissionDenied("User " + str(author.id)  + " does not have access to one or more teams \
+                under which this post is being created")
+
         post.author = author
         post.save()
         for team in teams:
