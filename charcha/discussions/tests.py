@@ -294,3 +294,47 @@ class SecurityTests(BaseDiscussionTests):
             with self.assertRaises(PermissionDenied):
                 comment_by_mark.edit_comment("Edited Comment #2", user)
         
+
+class GchatTests(TransactionTestCase):
+    def create_user(self, email, display_name):
+        import uuid
+        from social_django.models import UserSocialAuth
+        
+        username = email.split('@')[0]
+        user = User.objects.create_user(username=username, password="top_secret",
+            email=email)
+        
+        # Simulate a user getting created via social authentication
+        UserSocialAuth.objects.create(provider="google-oauth2", uid=email, user=user, extra_data='{}')
+
+        # Simulate a GchatUser that was synchronized from Gchat
+        gchat = GchatUser.objects.create(key="users/" + str(uuid.uuid4()) , display_name=display_name)
+
+        return (user, gchat)
+
+    def assertUserIsAssociated(self, user, gchat):
+        # Reload gchat
+        gchat = GchatUser.objects.get(id=gchat.id)
+        self.assertIsNotNone(gchat.user)
+        self.assertEquals(gchat.user.id, user.id)
+
+    def assertGchatUserIsNotAssociated(self, gchat):
+        # Reload gchat
+        gchat = GchatUser.objects.get(id=gchat.id)
+        self.assertIsNone(gchat.user)
+
+    def test_user_gchat_association(self):
+        user, gchat = self.create_user("john.doe@hashedin.com", "John Doe")
+        models.associate_gchat_user(None, None, None, None, user)
+    
+    def test_multiple_users_same_name(self):
+        user1, gchat1 = self.create_user("john.doe@hashedin.com", "John  doe")
+        user2, gchat2 = self.create_user("john.doe1@hashedin.com", "John Doe")
+
+        models.associate_gchat_user(None, None, None, None, user1)
+        models.associate_gchat_user(None, None, None, None, user2)
+
+        self.assertGchatUserIsNotAssociated(gchat1)
+        self.assertGchatUserIsNotAssociated(gchat2)
+        
+    

@@ -12,6 +12,8 @@ from charcha.teams.bot import notify_space
 from charcha.teams.models import Team
 from bleach.sanitizer import Cleaner
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
+
 import re
 
 cleaner = Cleaner(
@@ -43,6 +45,7 @@ DOWNVOTE = 2
 FLAG = 3
 
 def save_avatar(backend, strategy, details, response, user=None, *args, **kwargs):
+    'Called as part of social authentication login process'
     if backend.name == 'google-oauth2':
         url = response.get('picture', None)
         if not url:
@@ -50,6 +53,39 @@ def save_avatar(backend, strategy, details, response, user=None, *args, **kwargs
             url = image.get('url', None)
         user.avatar = url
         user.save()
+
+def associate_gchat_user(backend, strategy, details, response, user=None, *args, **kwargs):
+    '''Called as part of social authentication login process
+        We try to match the user logging in to an existing gchat user
+    '''
+    class CharchaRollback(Exception):
+        'An exception to indicate the transaction should be rollbacked'
+        pass
+
+    from django.db import connection
+    with connection.cursor() as cursor:
+        try:
+            with transaction.atomic():
+                cursor.execute("""
+                    WITH user_with_merge_key as (
+                        SELECT u.id as id, u.email, replace(substring(u.email, 0, position('@' in u.email)), '.', '') as merge_key 
+                        FROM users u JOIN social_auth_usersocialauth sa on u.id = sa.user_id
+                        WHERE u.email != ''
+                    )
+                    UPDATE gchat_users g
+                    SET user_id = um.id
+                    FROM user_with_merge_key um 
+                    WHERE replace(lower(g.display_name), ' ', '') = um.merge_key
+                    AND g.user_id is null AND um.id = %s;
+                """, [user.id])
+                if cursor.rowcount > 1:
+                    # Because we are matching on name, it is possible different users have the same name
+                    # So if we update multiple records in gchat_users table, something is wrong
+                    # In that case, we raise an exception so django does a rollback
+                    raise CharchaRollback()
+        except CharchaRollback:
+            # We only raised the exception to trigger django's rollback mechanism
+            pass
 
 def update_gchat_space(email, space_id):
     try:
