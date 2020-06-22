@@ -36,8 +36,8 @@ def _create_user(username):
 def _create_team(teamname, members):
     def to_sync_format(members):
         return [(m, m) for m in members]
-    
-    team = Team(name=teamname, gchat_space=members)
+
+    team = Team(name=teamname, gchat_space=teamname)
     team.save()
     team.sync_team_members(to_sync_format(members))
     return team
@@ -53,11 +53,16 @@ class BaseDiscussionTests(TransactionTestCase):
         self.swetha = _create_user("swetha")
         self.mark = _create_user("mark")
         self.martin = _create_user("martin")
+        self.ekta = _create_user("ekta")
+        self.ejaz = _create_user("ejaz")
 
     def _create_teams(self):
+        earthlings = ["ekta", "ejaz"]
         martians = ["mark", "martin"]
         everyone = ["ramesh", "amit", "swetha"]
         everyone.extend(martians)
+        everyone.extend(earthlings)
+        self.earthlings = _create_team("earthlings", earthlings)
         self.universe = _create_team("universe", everyone)
         self.martians = _create_team("martians", martians)
 
@@ -189,7 +194,103 @@ class DiscussionTests(BaseDiscussionTests):
                     msg="Author of comment must not get notified about her own comment")
 
 class SecurityTests(BaseDiscussionTests):
-    def test_only_team_members_can_view_post(self):
+    def assertPostListEquals(self, actual_posts, expected_posts):
+        a = set()
+        e = set()
+        for p in actual_posts:
+            a.add(p.id)
+        for p in expected_posts:
+            e.add(p.id)
+        return a == e
+
+    def test_cannot_create_post_in_team_you_dont_belong(self):
         with self.assertRaises(PermissionDenied):
             self.new_discussion(self.ramesh, "Ramesh is not a martian", self.martians)
 
+    def test_homepage_security(self):
+        'I should only see posts from teams I belong'
+        blue_post = self.new_discussion(self.ekta, "Earth is blue", self.earthlings)
+        red_post = self.new_discussion(self.martin, "Mars is red", self.martians)
+        universal_post = self.new_discussion(self.ramesh, "Big bang theory is false", self.universe)
+
+        ekta_homepage = Post.objects.recent_posts_with_my_votes(self.ekta)
+        self.assertPostListEquals(ekta_homepage, [blue_post, universal_post])
+
+        martin_homepage = Post.objects.recent_posts_with_my_votes(self.martin)
+        self.assertPostListEquals(martin_homepage, [red_post, universal_post])
+        
+        ramesh_homepage = Post.objects.recent_posts_with_my_votes(self.ramesh)
+        self.assertPostListEquals(ramesh_homepage, [universal_post])
+
+        with self.assertRaises(Exception):
+            anonymous_posts = Post.objects.recent_posts_with_my_votes(AnonymousUser())
+
+    def test_only_team_members_can_view_post(self):
+        post = self.new_discussion(self.martin, "Post related to Mars", self.martians)
+        Post.objects.get(id=post.id, requester=self.mark)
+        for user in [self.ramesh, self.amit, self.swetha]:
+            with self.assertRaises(PermissionDenied):
+                Post.objects.get(id=post.id, requester=user)
+
+    def test_only_team_members_can_comment(self):
+        post = self.new_discussion(self.martin, "Post related to Mars", self.martians)
+        c = post.add_comment("Mars is red", self.mark)
+        self.assertEqual(c.html, "Mars is red")
+        for user in [self.ramesh, self.amit, self.swetha]:
+            with self.assertRaises(PermissionDenied):
+                c = post.add_comment("Non-Martians cannot comment", user)
+        
+    def test_only_team_members_can_view_comments(self):
+        post = self.new_discussion(self.martin, "Post related to Mars", self.martians)
+        post.add_comment("Mars is red", self.mark)
+        post.add_comment("Mars comes after earth", self.martin)
+
+        # Martin and Mark should see both the comments
+        for user in [self.mark, self.martin]:
+            self.assertEqual(len(Comment.objects.best_ones_first(post, user)), 2)
+        
+        # Non-martians shouldn't see any comments
+        for user in [self.ramesh, self.amit, self.swetha]:
+            with self.assertRaises(PermissionDenied):
+                Comment.objects.best_ones_first(post, user)
+    
+    def test_only_team_members_can_vote(self):
+        post = self.new_discussion(self.martin, "Post related to Mars", self.martians)
+        comment = post.add_comment("Mars is red", self.mark)
+
+        for user in [self.mark, self.martin]:
+            post.upvote(user)
+            post.undo_vote(user)
+            post.downvote(user)
+            comment.upvote(user)
+            comment.downvote(user)
+            comment.downvote(user)
+        
+        for user in [self.ramesh, self.amit, self.swetha]:
+            with self.assertRaises(PermissionDenied):
+                post.upvote(user)
+            with self.assertRaises(PermissionDenied):
+                post.undo_vote(user)
+            with self.assertRaises(PermissionDenied):
+                post.downvote(user)
+            with self.assertRaises(PermissionDenied):
+                comment.upvote(user)
+            with self.assertRaises(PermissionDenied):
+                comment.downvote(user)
+            with self.assertRaises(PermissionDenied):
+                comment.downvote(user)
+    
+    def test_only_author_can_edit(self):
+        post_by_martin = self.new_discussion(self.martin, "Post related to Mars", self.martians)
+        comment_by_mark = post_by_martin.add_comment("Mars is red", self.mark)
+
+        post_by_martin.edit_post("Edited title", "Edited body", self.martin)
+        for user in [self.mark, self.ramesh, self.amit, self.swetha]:
+            with self.assertRaises(PermissionDenied):
+                post_by_martin.edit_post("Edited title #2", "Edited body #2", user)
+        
+        comment_by_mark.edit_comment("Edited Comment", self.mark)
+        for user in [self.martin, self.ramesh, self.amit, self.swetha]:
+            with self.assertRaises(PermissionDenied):
+                comment_by_mark.edit_comment("Edited Comment #2", user)
+        
