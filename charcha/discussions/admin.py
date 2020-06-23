@@ -1,16 +1,20 @@
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
-from .models import Post, Comment, Vote, Favourite, User
+from .models import Post, Comment, Vote, Favourite, User, TeamPosts
 
 class UserAdmin(admin.ModelAdmin):
     fields = ('username', 'gchat_space', 'score', 'email', 'is_active', 'is_staff')
     readonly_fields = ('username', )
 
+class TeamPostsAdmin(admin.TabularInline):
+    model = TeamPosts
+
 class PostAdmin(admin.ModelAdmin):
-    list_display = ('title', )
+    list_display = ('author', 'title', )
     fields = ('title', 'url', 'html', 'author', 'num_comments',
         'upvotes', 'downvotes', 'flags')
     readonly_fields = ('num_comments', 'author')
+    inlines = (TeamPostsAdmin,)
     
 class CommentAdmin(admin.ModelAdmin):
     list_display = ('submission_time', 'post', 'wbs', 'author', 'html')
