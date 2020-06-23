@@ -117,7 +117,9 @@ class StartDiscussionForm(forms.ModelForm):
             'title': 'Title',
             'html': 'Details'
         }
-        widgets = {'html': forms.HiddenInput()}
+        widgets = {
+            'html': forms.HiddenInput(),
+            'teams': forms.Select()}
 
     def clean(self):
         cleaned_data = super(StartDiscussionForm, self).clean()
