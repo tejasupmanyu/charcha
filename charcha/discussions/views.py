@@ -108,6 +108,16 @@ class EditComment(LoginRequiredMixin, View):
         post_url = reverse('discussion', args=[comment.post.id])
         return HttpResponseRedirect(post_url)
 
+class TeamSelect(forms.SelectMultiple):
+    '''Renders a many-to-many field as a single select dropdown
+        While the backend supports many-to-many relationship,
+        we are not yet ready to expose it to users yet.
+        So we mask the multiple select field into a single select
+    '''
+    def render(self, *args, **kwargs):
+        rendered = super().render(*args, **kwargs)
+        return rendered.replace('multiple>\n', '>\n')
+        
 class StartDiscussionForm(forms.ModelForm):
     class Meta:
         model = Post
@@ -119,7 +129,7 @@ class StartDiscussionForm(forms.ModelForm):
         }
         widgets = {
             'html': forms.HiddenInput(),
-            'teams': forms.Select()}
+            'teams': TeamSelect()}
 
     def clean(self):
         cleaned_data = super(StartDiscussionForm, self).clean()
