@@ -96,6 +96,18 @@ def update_gchat_space(email, space_id):
     except User.DoesNotExist as e:
         return False
 
+class PostWithCustomGet:
+    def get(*args, **kwargs):
+        print(args)
+        print(kwargs)
+        return Post.objects.get(*args, **kwargs)
+
+class CommentWithCustomGet:
+    def get(*args, **kwargs):
+        print(args)
+        print(kwargs)
+        return Comment.objects.get(*args, **kwargs)
+
 class User(AbstractUser):
     """Our custom user model with a score"""
     class Meta:
@@ -131,11 +143,11 @@ class Vote(models.Model):
     submission_time = models.DateTimeField(auto_now_add=True)
 
 class VotableManager(models.Manager):
-    def get(self, **kwargs):
+    def get(self, *args, **kwargs):
         if 'requester' not in kwargs:
             raise PermissionDenied("requester not provided")
         requester = kwargs.pop('requester')
-        obj = super().get(**kwargs)
+        obj = super().get(*args, **kwargs)
         obj.check_view_permission(requester)
         return obj
 
