@@ -13,7 +13,7 @@
     </div>
     <div class="post-line-2">
       <div class="post-score">
-          by {{ post.author }} |
+          by {{ post.author }} | {% include "partials/teams.html" with teams=post.teamsobj %} |
           {{ post.num_comments }} comment{{ post.num_comments|pluralize }} |
           {{ post.score }} point{{ post.score | pluralize }} | 
           {{ post.submission_time | naturalday }}

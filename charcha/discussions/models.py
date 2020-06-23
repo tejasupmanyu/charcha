@@ -288,12 +288,19 @@ class PostsManager(VotableManager):
 
     def recent_posts_with_my_votes(self, user):
         posts = Post.objects.raw("""
+            WITH post_teams as (
+                SELECT tp.post_id as post_id, json_agg(t.*) as teams
+                FROM team_posts tp JOIN (SELECT id, name FROM teams) t on tp.team_id = t.id
+                GROUP BY tp.post_id
+            )
             SELECT p.id, p.title, 
                 p.upvotes, p.downvotes, p.flags,
                 (p.upvotes - p.downvotes) as score, 
                 p.title, p.html, p.submission_time, p.num_comments, 
-                json_build_object('id', a.id, 'username', a.username) as _author
+                json_build_object('id', a.id, 'username', a.username) as _author,
+                pt.teams as teamsobj
             FROM posts p JOIN users a on p.author_id = a.id
+                JOIN post_teams pt on p.id = pt.post_id
             WHERE EXISTS (
                 SELECT 'x' FROM team_posts tp JOIN team_members tm ON tp.team_id = tm.team_id
                 WHERE tm.gchat_user_id = (select g.id from gchat_users g where g.user_id = %s) 
