@@ -21,64 +21,61 @@
     <meta name="msapplication-TileColor" content="#ffffff">
     <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
     <meta name="theme-color" content="#ffffff">
-    <meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>{% block title %}Charcha{% endblock %}</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
     <link rel="stylesheet" href="{% static "trix.css" %}">
     <link rel="stylesheet" href="{% static "main.css" %}">
   </head>
   <body>
-<nav class="navbar navbar-default">
-  <div class="container">
-    <div class="navbar-header">
-      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#primary-nav" aria-expanded="false">
-        <span class="sr-only">Toggle navigation</span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-      </button>
-      <a class="navbar-brand" href="/">
-        <div class="logo">
-          <span class="glyphicon glyphicon-comment" aria-hidden="true"></span><span>&nbsp;CHARCHA</span>
-        </div>
-      </a>
-    </div>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+<div class="container">
+  <a class="navbar-brand logo" href="/">CHARCHA</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
 
-    <!-- Collect the nav links, forms, and other content for toggling -->
-    <div class="collapse navbar-collapse" id="primary-nav">
-      <ul class="nav navbar-nav navbar-right">
-        {% if request.user.is_authenticated %}
-        <li><a href="{% url "start-discussion" %}">new discussion</a></li>
-        <li><a href="{% url 'myprofile' %}">{{request.user.username}} | {{request.user.score}} points </a></li>
-        <li><a href="{% url "logout" %}">logout</a></li>
+  <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav ml-auto">
+      <li class="nav-item">
+        <a class="nav-link" href="{% url "start-discussion" %}">new discussion</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="{% url 'myprofile' %}">{{request.user.username}} | {{request.user.score}} points </a>
+      </li>
+      <li class="nav-item">
+        {% if request.user %}
+        <a class="nav-link" href="{% url "logout" %}">logout</a>
         {% else %}
-        <li><a href="{% url "login" %}">login</a></li>
+        <a class="nav-link" href="{% url "login" %}">login</a>
         {% endif %}
-      </ul>
-    </div><!-- /.navbar-collapse -->
-  </div><!-- container -->  
+      </li>
+    </ul>
+  </div>
+</div>
 </nav>
-<div class="clearfix"></div>
 <div class="container charcha">
+  {% if request.user.is_authenticated %}  
   <div class="row">
     <div class="col-md-6">
-      {% if request.user.is_authenticated %}
         {% if not request.user.gchat_space %}
         <div class="alert alert-info" role="alert">You haven't added charcha bot yet, and will not receive notifications. <a class="alert-link" href="https://charcha.hashedin.com/discuss/139/">Learn More</a></div>
         {% endif %}
         {% if not request.user.gchat_user %}
         <div class="alert alert-danger" role="alert">You are not part of any teams, and cannot participate in Charcha. This is most likely because your email address does not follow the convention of firstname.lastname@hashedin.com. <br/> <br/> Please contact <a  class="alert-link" href="mailto:sripathi.krishnan@hashedin.com">sripathi.krishnan@hashedin.com</a> to resolve this!</div>
         {% endif %}
-      {% endif %}
     </div>
   </div>
+  {% endif %}
   <div class="row">
+    <div class="col-md-2" style="border-right: 1px #eeeeee solid;"></div>
     <div class="col-md-6">{% block content %}{% endblock %}</div>
   </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
 <script src="{% static "trix.js" %}"></script>
 <script src="{% static "main.js" %}"></script>
 {% block before-body-close %}
