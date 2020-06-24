@@ -305,7 +305,7 @@ class PostsManager(VotableManager):
                 p.upvotes, p.downvotes, p.flags,
                 (p.upvotes - p.downvotes) as score, 
                 p.title, p.html, p.submission_time, p.num_comments, 
-                json_build_object('id', a.id, 'username', a.username) as _author,
+                json_build_object('id', a.id, 'username', a.username, 'avatar', a.avatar) as _author,
                 pt.teams as teamsobj
             FROM posts p JOIN users a on p.author_id = a.id
                 JOIN post_teams pt on p.id = pt.post_id
