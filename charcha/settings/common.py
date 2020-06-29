@@ -79,7 +79,7 @@ INSTALLED_APPS = [
     # http://whitenoise.evans.io/en/stable/django.html#using-whitenoise-in-development
     'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
-    'bootstrapform',
+    'crispy_forms',
     'charcha.discussions',
     'charcha.teams',
     'social_django',
@@ -286,3 +286,5 @@ STATICFILES_DIRS = [
 
 MEDIA_ROOT=os.path.join(BASE_DIR, "media")
 MEDIA_URL="/media/"
+
+CRISPY_TEMPLATE_PACK = 'bootstrap4'

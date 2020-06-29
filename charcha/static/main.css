@@ -4,6 +4,15 @@ h2 {
 h3 {
   font-size: 20px;
 }
+.charcha-btn {
+  border-color: #ff5722;
+  color: #ff5722;
+}
+.charcha-btn:hover {
+  color: white;
+  background-color: #ff5722;
+}
+
 .logo {
   color: #ff5722 !important;
 }

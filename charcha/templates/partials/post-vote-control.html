@@ -1,5 +1,5 @@
-<button data-object-type="{{obj_type}}" data-object-id="{{obj.id}}"  
-  type="button" class="btn upvote-button p-0 mr-2" 
+<button style="border-left: 0" data-object-type="{{obj_type}}" data-object-id="{{obj.id}}"  
+  type="button" class="btn upvote-button p-0 mr-1" 
   {% if request.user.id == obj.author.id %} disabled {% endif %}
 >
     <svg class="bi bi-hand-thumbs-up text-muted" width="15px" height="15px" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
