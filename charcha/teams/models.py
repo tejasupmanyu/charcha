@@ -52,7 +52,7 @@ class TeamManager(models.Manager):
                 JOIN gchat_users g on tm.gchat_user_id = g.id
             WHERE g.user_id = %s"""
         , [user.id])
-        return [(team.id, team.name) for team in teams]
+        return teams
 
     def belongs_to_all_teams(self, user, teams):
         team_ids = [t.id for t in teams]

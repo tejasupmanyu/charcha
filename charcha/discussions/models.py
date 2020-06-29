@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+from django.db.utils import IntegrityError
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
@@ -58,34 +59,27 @@ def associate_gchat_user(backend, strategy, details, response, user=None, *args,
     '''Called as part of social authentication login process
         We try to match the user logging in to an existing gchat user
     '''
-    class CharchaRollback(Exception):
-        'An exception to indicate the transaction should be rollbacked'
-        pass
-
     from django.db import connection
     with connection.cursor() as cursor:
         try:
-            with transaction.atomic():
-                cursor.execute("""
-                    WITH user_with_merge_key as (
-                        SELECT u.id as id, u.email, replace(substring(u.email, 0, position('@' in u.email)), '.', '') as merge_key 
-                        FROM users u JOIN social_auth_usersocialauth sa on u.id = sa.user_id
-                        WHERE u.email != ''
-                    )
-                    UPDATE gchat_users g
-                    SET user_id = um.id
-                    FROM user_with_merge_key um 
-                    WHERE replace(lower(g.display_name), ' ', '') = um.merge_key
-                    AND g.user_id is null AND um.id = %s;
-                """, [user.id])
-                if cursor.rowcount > 1:
-                    # Because we are matching on name, it is possible different users have the same name
-                    # So if we update multiple records in gchat_users table, something is wrong
-                    # In that case, we raise an exception so django does a rollback
-                    raise CharchaRollback()
-        except CharchaRollback:
-            # We only raised the exception to trigger django's rollback mechanism
+            cursor.execute("""
+                WITH user_with_merge_key as (
+                    SELECT u.id as id, u.email, replace(substring(u.email, 0, position('@' in u.email)), '.', '') as merge_key 
+                    FROM users u JOIN social_auth_usersocialauth sa on u.id = sa.user_id
+                    WHERE u.email != ''
+                )
+                UPDATE gchat_users g
+                SET user_id = um.id
+                FROM user_with_merge_key um 
+                WHERE replace(lower(g.display_name), ' ', '') = um.merge_key
+                AND g.user_id is null AND um.id = %s;
+            """, [user.id])
+        except IntegrityError:
+            # Because we are matching on name, it is possible different users have the same name
+            # So if we update multiple records in gchat_users table, something is wrong
+            # In such a case, we simply don't update the database, but let the user login
             pass
+
 
 def update_gchat_space(email, space_id):
     try:
@@ -179,7 +173,7 @@ class Votable(models.Model):
         self.check_view_permission(user)
         raise Exception("not yet implemented")
 
-    def undo_vote(self, user):
+    def _undo_vote(self, user):
         self.check_view_permission(user)
         content_type = ContentType.objects.get_for_model(self)
         votes = Vote.objects.filter(
@@ -195,7 +189,7 @@ class Votable(models.Model):
             elif v.type_of_vote == DOWNVOTE:
                 downvotes = downvotes + 1
             else:
-                raise Exception("Invalid state, logic bug in undo_vote")
+                raise Exception("Invalid state, logic bug in _undo_vote")
             v.delete()
 
         self.upvotes = F('upvotes') - upvotes
@@ -209,6 +203,7 @@ class Votable(models.Model):
     def _vote(self, user, type_of_vote):
         content_type = ContentType.objects.get_for_model(self)
         if self._already_voted(user, content_type, type_of_vote):
+            self._undo_vote(user)
             return
         if self._voting_for_myself(user):
             return
@@ -487,7 +482,7 @@ class CommentsManager(VotableManager):
                 c.wbs, length(c.wbs)/5 as indent, 
                 c.upvotes, c.downvotes, c.flags,
                 c.upvotes - c.downvotes as score,
-                up.is_upvoted, down.is_downvoted
+                up.is_upvoted, down.is_downvoted, u.avatar
                 FROM comments c 
                 INNER JOIN users u on c.author_id = u.id
                 LEFT OUTER JOIN (
@@ -519,7 +514,7 @@ class CommentsManager(VotableManager):
                         upvotes = row[7], downvotes=row[8],
                         flags = row[9]
                     )
-                author = User(id=row[2], username=row[3])
+                author = User(id=row[2], username=row[3], avatar=row[13])
                 comment.author = author
                 comment.indent = row[6]
                 comment.score = row[10]

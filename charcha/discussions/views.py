@@ -34,7 +34,8 @@ def prepare_html_for_edit(html):
 @login_required
 def homepage(request):
     posts = Post.objects.recent_posts_with_my_votes(request.user)
-    return render(request, "home.html", context={"posts": posts})
+    teams = Team.objects.my_teams(request.user)
+    return render(request, "home.html", context={"posts": posts, "teams": teams})
 
 class CommentForm(forms.ModelForm):
     class Meta:
@@ -141,9 +142,13 @@ class StartDiscussionForm(forms.ModelForm):
         return cleaned_data
 
 class StartDiscussionView(LoginRequiredMixin, View):
+    def team_choices(self, user):
+        teams = Team.objects.my_teams(user)
+        return [(team.id, team.name) for team in teams]
+
     def get(self, request):
         form = StartDiscussionForm(initial={"author": request.user})
-        form.fields['teams'].choices = Team.objects.my_teams(request.user)
+        form.fields['teams'].choices = self.team_choices(request.user)
         return render(request, "submit.html", context={"form": form})
 
     def post(self, request):
@@ -155,7 +160,7 @@ class StartDiscussionView(LoginRequiredMixin, View):
             new_post_url = reverse('discussion', args=[post.id])
             return HttpResponseRedirect(new_post_url)
         else:
-            form.fields['teams'].choices = Team.objects.my_teams(request.user)
+            form.fields['teams'].choices = self.team_choices(request.user)
             return render(request, "submit.html", context={"form": form})
 
 class EditDiscussionForm(StartDiscussionForm):
@@ -189,50 +194,41 @@ class EditDiscussion(LoginRequiredMixin, View):
 def upvote_post(request, post_id):
     post = get_object_or_404(PostWithCustomGet, pk=post_id, requester=request.user)
     post.upvote(request.user)
-    return HttpResponse('OK')
+    post.refresh_from_db()
+    return HttpResponse(post.upvotes)
 
 @login_required
 @require_http_methods(['POST'])
 def downvote_post(request, post_id):
     post = get_object_or_404(PostWithCustomGet, pk=post_id, requester=request.user)
     post.downvote(request.user)
-    return HttpResponse('OK')
-
-@login_required
-@require_http_methods(['POST'])
-def undo_vote_on_post(request, post_id):
-    post = get_object_or_404(PostWithCustomGet, pk=post_id, requester=request.user)
-    post.undo_vote(request.user)
-    return HttpResponse('OK')
+    post.refresh_from_db()
+    return HttpResponse(post.downvotes)
 
 @login_required
 @require_http_methods(['POST'])
 def upvote_comment(request, comment_id):
     comment = get_object_or_404(CommentWithCustomGet, pk=comment_id, requester=request.user)
     comment.upvote(request.user)
-    return HttpResponse('OK')
+    comment.refresh_from_db()
+    return HttpResponse(comment.upvotes)
 
 @login_required
 @require_http_methods(['POST'])
 def downvote_comment(request, comment_id):
     comment = get_object_or_404(CommentWithCustomGet, pk=comment_id, requester=request.user)
     comment.downvote(request.user)
-    return HttpResponse('OK')
-
-@login_required
-@require_http_methods(['POST'])
-def undo_vote_on_comment(request, comment_id):
-    comment = get_object_or_404(CommentWithCustomGet, pk=comment_id, requester=request.user)
-    comment.undo_vote(request.user)
-    return HttpResponse('OK')
+    comment.refresh_from_db()
+    return HttpResponse(comment.downvotes)
 
 @login_required
 def myprofile(request):
-    return render(request, "profile.html", context={})
+    return render(request, "profile.html", context={"user": request.user })
 
 @login_required
 def profile(request, userid):
-    return render(request, "profile.html", context={"user": {"id": userid}})
+    user = get_object_or_404(User, id=userid)
+    return render(request, "profile.html", context={"user": user })
 
 class FileUploadView(LoginRequiredMixin, View):
     def post(self, request, **kwargs):

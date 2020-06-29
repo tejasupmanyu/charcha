@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% load humanize %}
 {% load bootstrap %}
 {% block title %}{{ post.title }} | Charcha{% endblock %}
@@ -6,85 +7,92 @@
 {% block content %}
 {% spaceless %}
 <div class="post">
-  <div class="post-title">
-    <h2>{{ post.title }}</h2>
-  </div>
-  <div class="post-line-2">
-    <div class="post-score">
-      <span class="comment-author">
-        <a href="">{{ post.author.username }}</a></span> | 
-        {% include "partials/teams.html" with teams=post.teams.all %} |
-      {{ post.submission_time | naturalday }} | {{post.score}} point{{ post.score | pluralize }}
+  <h2>{{ post.title }}</h2>
+  <div class="media post py-2 d-flex">
+    {% if post.author.avatar %}
+    <img width="60" src="{{post.author.avatar}}" class="rounded-circle mr-3"/>
+    {% else %}
+    <img width="60" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
+    {% endif %}
+    <div class="media-body">
+      <div class="text-muted">
+        <a href="{% url 'profile' post.author.id %}">{{ post.author.username }}</a> | 
+          {% include "partials/teams.html" with teams=post.teams.all %} |
+        {{ post.submission_time | naturalday }}
+      </div>
     </div>
   </div>
-  <hr/>
-    <div class="post-text trix-content">
-      {{post.html | safe}}
+  <div class="trix-content">
+    {{post.html | safe}}
+  </div>
+  <div class="text-muted">
+    {% include "partials/post-vote-control.html" with obj_type='posts' obj=post %}
+    {% if request.user.id == post.author.id %}
+    <a class="btn" href="{% url 'edit-discussion' post.id %}">
+      edit
+    </a>
+    {% endif %}
+    {% if request.user.is_staff %}
+      <a class="btn" href="{% url 'admin:discussions_post_change' post.id %}">manage</a>
+    {% endif %}
+  </div>
+  <div class="d-flex justify-content-center align-items-center pb-3">
+    <div class="separator">&nbsp;</div>
+    <div class="px-4"><b>{{ comments|length }}&nbsp;response{{ comments | length | pluralize }}</b></div>
+    <div class="separator">&nbsp;</div>
+  </div>
+  {% for comment in comments %}
+  <div id="comment-{{comment.id}}" class="py-2 comment indent-{{comment.indent}}">
+    <div class="media d-flex">
+      {% if comment.author.avatar %}
+        <img width="40" src="{{comment.author.avatar}}" class="rounded-circle mr-3"/>
+      {% else %}
+        <img width="40" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
+      {% endif %}
+      <div class="media-body text-muted">
+        <span class="comment-author">
+          <a href="#">{{ comment.author.username }}</a>
+        </span>
+        <span> | </span>
+        <!-- <span>{{comment.score}} points</span>
+        <span> | </span> -->
+        <span class="comment-submission-time">{{ comment.submission_time | naturaltime }}</span>
+        <span> | </span>
+        <span><a href="#comment-{{comment.id}}">permalink</a></span>
+      </div>
     </div>
-    <div class="comment-footer btn-group" role="group">
-      {% include "partials/post-vote-control.html" with obj_type='posts' obj=post %}
-      {% if request.user.id == post.author.id %}
-      <a class="btn" href="{% url 'edit-discussion' post.id %}">
+    <div class="trix-content pt-3">
+        {{ comment.html | safe}}
+    </div>
+    <div class="btn-group text-muted" role="group">
+      {% include "partials/post-vote-control.html" with obj_type='comments' obj=comment %}
+      {% if comment.indent < 12 %}
+      <a class="btn btn-sm py-0" href="{% url 'reply_to_comment' comment.id %}">
+        reply
+      </a>
+      {% else %}
+      <span><i>replies not allowed anymore</i></span>
+      {% endif %}
+      {% if request.user.id == comment.author.id %}
+      <a class="btn btn-sm py-0" href="{% url 'edit_comment' comment.id %}">
         <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
         edit
       </a>
       {% endif %}
       {% if request.user.is_staff %}
-        <a class="btn" href="{% url 'admin:discussions_post_change' post.id %}">manage</a>
+      <a class="btn" href="{% url 'admin:discussions_comment_change' comment.id %}">manage</a>
       {% endif %}
     </div>
-</div>
+  </div>
+  {% endfor %}
 
-<div class="panel">
-  <b>{{ comments|length }} response{{ comments | length | pluralize }}</b>
-</div>
-{% for comment in comments %}
-<div id="comment-{{comment.id}}" class="panel comment indent-{{comment.indent}}">
-  <div class="comment-header">
-    <span class="comment-author">
-      <a href="#">{{ comment.author.username }}</a>
-    </span>
-    <span> | </span>
-    <!-- <span>{{comment.score}} points</span>
-    <span> | </span> -->
-    <span class="comment-submission-time">{{ comment.submission_time | naturaltime }}</span>
-    <span> | </span>
-    <span><a href="#comment-{{comment.id}}">permalink</a></span>  
-  </div>
-  <div class="comment-text trix-content">
-      {{ comment.html | safe}}
-  </div>
-  <div class="comment-footer btn-group" role="group">
-    {% include "partials/post-vote-control.html" with obj_type='comments' obj=comment %}
-    {% if comment.indent < 12 %}
-    <a class="btn comment-action reply" href="{% url 'reply_to_comment' comment.id %}">
-      <span class="glyphicon glyphicon-share-alt" aria-hidden="true"></span>
-      reply
-    </a>
-    {% else %}
-    <span><i>replies not allowed anymore</i></span>
-    {% endif %}
-    {% if request.user.id == comment.author.id %}
-    <a class="btn" href="{% url 'edit_comment' comment.id %}">
-      <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
-      edit
-    </a>
-    {% endif %}
-    {% if request.user.is_staff %}
-    <a class="btn" href="{% url 'admin:discussions_comment_change' comment.id %}">manage</a>
-    {% endif %}
-  </div>
-</div>
-{% endfor %}
-
-<div class="panel">
-  <h4>Your Response:</h4>
+  <h4 class='my-3'>Your Response:</h4>
   <form method="post" action="">
     {% csrf_token %}
     {{ form | bootstrap }}
     <trix-editor class="trix-content" input="id_html"></trix-editor>
     <button type="submit" class="btn btn-default">Reply</button>
   </form>
-</div>
+</div> <!-- end post-->
 {% endspaceless %}
 {% endblock %}

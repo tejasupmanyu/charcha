@@ -87,9 +87,11 @@ class DiscussionTests(BaseDiscussionTests):
         post.upvote(self.amit)
         post = Post.objects.get(pk=post.id, requester=self.amit)
         self.assertEquals(post.upvotes, 1)
+
+        # Upvoting a second time undo's the vote
         post.upvote(self.amit)
         post = Post.objects.get(pk=post.id, requester=self.amit)
-        self.assertEquals(post.upvotes, 1)
+        self.assertEquals(post.upvotes, 0)
 
     def test_voting_on_home_page(self):
         # Ramesh starts a discussion
@@ -115,8 +117,8 @@ class DiscussionTests(BaseDiscussionTests):
         self.assertEquals(post.upvotes, 1)
         self.assertEquals(post.downvotes, 1)
         
-        # Amit undo's his vote
-        post.undo_vote(self.amit)
+        # Amit undo's his vote by upvoting again
+        post.upvote(self.amit)
 
         # Home page as seen by Amit
         post = Post.objects.recent_posts_with_my_votes(self.amit)[0]
@@ -260,23 +262,17 @@ class SecurityTests(BaseDiscussionTests):
 
         for user in [self.mark, self.martin]:
             post.upvote(user)
-            post.undo_vote(user)
             post.downvote(user)
             comment.upvote(user)
-            comment.downvote(user)
             comment.downvote(user)
         
         for user in [self.ramesh, self.amit, self.swetha]:
             with self.assertRaises(PermissionDenied):
                 post.upvote(user)
             with self.assertRaises(PermissionDenied):
-                post.undo_vote(user)
-            with self.assertRaises(PermissionDenied):
                 post.downvote(user)
             with self.assertRaises(PermissionDenied):
                 comment.upvote(user)
-            with self.assertRaises(PermissionDenied):
-                comment.downvote(user)
             with self.assertRaises(PermissionDenied):
                 comment.downvote(user)
     
@@ -328,7 +324,7 @@ class GchatTests(TransactionTestCase):
         models.associate_gchat_user(None, None, None, None, user)
     
     def test_multiple_users_same_name(self):
-        user1, gchat1 = self.create_user("john.doe@hashedin.com", "John  doe")
+        user1, gchat1 = self.create_user("john.doe@hashedin.com", "John Doe")
         user2, gchat2 = self.create_user("john.doe1@hashedin.com", "John Doe")
 
         models.associate_gchat_user(None, None, None, None, user1)

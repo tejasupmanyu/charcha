@@ -14,67 +14,22 @@ function getCookie(name) {
     return cookieValue;
 }
 
-$('.vote-button').click(function(){
+$('.upvote-button').click(function(){
     //the button that was clicked (upvote or downvote)
     var elem = $(this);
-
-    // the div holding upvote and downvote buttons
-    var parent = elem.parent(".vote-control")
+    var score = elem.find(".score");
+    var objectType = elem.data("object-type");
+    var objectId = elem.data("object-id");
     
-    //if upvote button was clicked, sibling is the downvote button
-    var sibling = $(elem.siblings(".vote-button")[0]);
-
-    var objectType = parent.data("object-type");
-    var objectId = parent.data("object-id");
-    
-    var state = elem.attr("data-state");
-    var isUpvoteButton = elem.hasClass("upvote");
-    var isDownvoteButton = elem.hasClass("downvote");
-    var action;
-    if (isUpvoteButton && state === 'enabled') {
-        action = "upvote";
-    }
-    else if (isDownvoteButton && state === 'enabled') {
-        action = "downvote";
-    }
-    else if (state === 'voted') {
-        action = "undovote";
-    }
-    else {
-        // upvote and downvote are both disabled
-        // so do nothing
-        return;
-    }
-
-    // Optimistic UI
-    // First update the UI, assuming that the request will succeed
-    // If the request fails, revert the UI
-    if (action === "upvote" || action === "downvote") {
-        elem.attr("data-state", "voted");
-        sibling.attr("data-state", "disabled");
-    }
-    else if (action === "undovote") {
-        elem.attr("data-state", "enabled");
-        sibling.attr("data-state", "enabled");
-    }
-
-    var url = "/api/" + objectType + "/" + objectId + "/" + action;
+    var url = "/api/" + objectType + "/" + objectId + "/upvote";
     
     var csrftoken = getCookie('csrftoken');
     $.post(url, {'csrfmiddlewaretoken': csrftoken })
         .done(function(data){
-            //Nothing to do
+          score.html(data);
         })
         .fail(function(data){
-            // Undo the changes we made to the UI, thinking that the request would succeed
-            if (action === "upvote" || action === "downvote") {
-                elem.attr("data-state", "enabled");
-                sibling.attr("data-state", "enabled");
-            }
-            else if (action === "undovote") {
-                elem.attr("data-state", "voted");
-                sibling.attr("data-state", "disabled");
-            }
+          score.html('?');
         });
 });
 
