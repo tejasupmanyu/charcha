@@ -80,7 +80,7 @@
       </a>
       {% endif %}
       {% if request.user.is_staff %}
-      <a class="btn" href="{% url 'admin:discussions_comment_change' comment.id %}">manage</a>
+      <a class="btn btn-sm py-0" href="{% url 'admin:discussions_comment_change' comment.id %}">manage</a>
       {% endif %}
     </div>
   </div>
