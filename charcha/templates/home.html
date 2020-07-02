@@ -5,31 +5,113 @@
 
 {% block content %}
 {% spaceless %}
-<h2 class="mb-3">Recent Discussions</h2>
-<div class="post-list">
-{% for post in posts %}
-<div class="media post mb-2">
-  {% if post.author.avatar %}
-    <img width="40" src="{{post.author.avatar}}" class="rounded-circle mr-3"/>
-  {% else %}
-    <img width="40" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
-  {% endif %}
-  <div class="media-body">
-  <h3>
-    <div class="post-title"><a href="{% url 'discussion' post.id %}">{{ post.title }}</a></div>
-    <small class="post-metadata text-muted">
-        by <a href="/profile/me">{{ post.author }}</a> | {% include "partials/teams.html" with teams=post.teamsobj %} |
-        {{ post.num_comments }} comment{{ post.num_comments|pluralize }} |
-        {{ post.score }} point{{ post.score | pluralize }} | 
-        {{ post.submission_time | naturalday }}
-        {% if request.user.is_staff %}
-        | <a href="{% url 'admin:discussions_post_change' post.id %}">manage</a>
-        {% endif %}
-    </small>
-  </h3>
+<div class="col-md-8">
+  <div class="border-bottom pb-2 mb-4 d-flex justify-content-between">
+    {% if team %}
+    <div>
+      <h2 class="mb-0">{{ team.name | title }}</h2>
+      <small class="text-muted">{{ team.description }}</small>
+    </div>
+    <!-- <div class="align-self-end">
+      <small><a href="/">Manage Team</a></small>
+    </div> -->
+    {% else %}
+      <h2 class="mb-0">All Discussions</h2>
+    {% endif %}
+  </div>
+  <div class="post-list">
+  {% for post in posts %}
+  <div class="media post mb-2">
+    {% if post.author.avatar %}
+      <img width="40" src="{{post.author.avatar}}" class="rounded-circle mr-3"/>
+    {% else %}
+      <img width="40" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
+    {% endif %}
+    <div class="media-body">
+    <h3>
+      <div class="post-title"><a href="{% url 'discussion' post.id %}">{{ post.title }}</a></div>
+      <small class="post-metadata text-muted">
+          by <a href="{% url 'profile' post.author.id %}">{{ post.author }}</a> |
+          {% if post.teamsobj %}
+            {% include "partials/teams.html" with teams=post.teamsobj %} |
+          {% endif %}
+          {{ post.num_comments }} comment{{ post.num_comments|pluralize }} |
+          {{ post.score }} point{{ post.score | pluralize }} | 
+          {{ post.submission_time | naturalday }}
+          {% if request.user.is_staff %}
+          | <a href="{% url 'admin:discussions_post_change' post.id %}">manage</a>
+          {% endif %}
+      </small>
+    </h3>
+    </div>
+  </div>
+  {% endfor %}
+  </div>
+</div>  
+
+{% if teams %}
+<div class="col-md-4">
+  <div class="card mt-3">
+    <h4 class="card-header">My Teams</h4>
+      <ul class="list-group list-group-flush">
+        {% for team in teams %}
+        <li class="py-1 list-group-item"><a href="{% url 'team_home' team.id %}">{{team.name}}</a></li>
+        {% endfor %}
+      </ul>
   </div>
 </div>
-{% endfor %}
+{% endif %}
+
+{% if not teams %}
+<div class="col-md-4">
+  {% if team %}
+  <div class="card mt-3">
+    <h4 class="card-header">About {{team.name|title}}</h4>
+    <div class="card-body">
+      <div class="trix-content">
+        {{ team.about | safe}}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if active_members %}
+  <div class="card mt-3">
+    <h4 class="card-header">Active Members</h4>
+    <div class="card-body">
+      <ul class="list-unstyled">
+      {% for m in active_members %}
+          <li class="pb-2">
+            {% if m.avatar %}
+            <img width="30" src="{{m.avatar}}" class="rounded-circle mr-3"/>
+            {% else %}
+            <img width="30" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
+            {% endif %}
+            <a href="{% url 'profile' m.id %}?team={{team.id}}">{{m.display_name}}</a>
+          </li>
+      {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+  <!-- <div class="card">
+    <h4 class="card-header">Bookmarks</h4>
+    <div class="card-body">
+    <ul class="ml-n4">
+      <li><a href="https://drive.google.com/drive/u/1/folders/0B-1Y8nINFksuTFAzSnlvY1B4WXc">Presales Folder in GDrive</a></li>
+      <li><a href="https://docs.google.com/presentation/d/1pldV79_KPhP0rgMXsdigF5yRrO8YzrKDx41GpPXkMbA/edit#slide=id.g5746c2cf76_0_0">MASTER - HashedIn Portfolio - Intelligent SaaS</a></li>
+      <li><a href="https://app.hubspot.com/contacts/5534647/deals/board/view/all/">Hubspot Deals</a></li>
+      <li><a href="mailto:presales@hashedin.com">Mailing List</a></li>
+    </ul>
+    </div>
+  </div>
+  <div class="card mt-3">
+    <h4 class="card-header">Members</h4>
+    <div class="card-body">
+      <span>Sripathi Krishnan</span>, <span>Harshit Singhal</span>, <span>Gaurav Aroroa</span> and 12 others
+    </div>
+  </div> -->
 </div>
+{% endif %}
 {% endspaceless %}
 {% endblock %}

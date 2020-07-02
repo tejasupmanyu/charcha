@@ -6,6 +6,7 @@
 
 {% block content %}
 {% spaceless %}
+<div class="col-md-7">
 <div class="post">
   <h2>{{ post.title }}</h2>
   <div class="media post py-2 d-flex">
@@ -51,7 +52,7 @@
       {% endif %}
       <div class="media-body text-muted">
         <span class="comment-author">
-          <a href="#">{{ comment.author.username }}</a>
+          <a href="{% url 'profile' comment.author.id %}">{{ comment.author.username }}</a>
         </span>
         <span> | </span>
         <!-- <span>{{comment.score}} points</span>
@@ -94,5 +95,28 @@
     <button type="submit" class="mt-3 btn charcha-btn">Reply</button>
   </form>
 </div> <!-- end post-->
+</div>
+<div class="offset-md-1 col-md-4 mt-2">
+  <!-- <div class="card">
+    <div class="card-header">Hubspot Deal</div>
+    <div class="card-body">
+      <h4 class="card-title"><a href="https://app.hubspot.com/contacts/5534647/deals/board/view/all/">Tata Hitachi - Migration & Portal Updates</a></h4>
+      <div class="d-flex">
+        <span class="mr-1 badge badge-pill badge-secondary">
+          Python
+        </span>
+        <span class="mr-1 badge badge-pill badge-secondary">
+          React
+        </span>
+        <span class="mr-1 badge badge-pill badge-secondary">
+          AWS
+        </span>
+        <span class="mr-1 badge badge-pill badge-secondary">
+          GIC
+        </span>
+      </div>
+    </div>
+  </div> -->
+</div>
 {% endspaceless %}
 {% endblock %}

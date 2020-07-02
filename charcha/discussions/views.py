@@ -37,6 +37,13 @@ def homepage(request):
     teams = Team.objects.my_teams(request.user)
     return render(request, "home.html", context={"posts": posts, "teams": teams})
 
+@login_required
+def team_home(request, team_id):
+    team = get_object_or_404(Team, pk=team_id)
+    active_members = team.active_team_members()
+    posts = Post.objects.posts_in_team_with_my_votes(request.user, team=team)
+    return render(request, "home.html", context={"posts": posts, "team": team, "active_members": active_members})
+
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment

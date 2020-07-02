@@ -289,6 +289,32 @@ class PostsManager(VotableManager):
                     post.is_downvoted = True
         return post
 
+    def posts_in_team_with_my_votes(self, user, team):
+        posts = Post.objects.raw("""
+            SELECT p.id, p.title, 
+                p.upvotes, p.downvotes, p.flags,
+                (p.upvotes - p.downvotes) as score, 
+                p.title, p.html, p.submission_time, p.num_comments, 
+                json_build_object('id', a.id, 'username', a.username, 'avatar', a.avatar) as _author
+            FROM posts p JOIN users a on p.author_id = a.id
+            WHERE EXISTS (
+                SELECT 'x' FROM team_posts tp JOIN team_members tm ON tp.team_id = tm.team_id
+                WHERE tm.gchat_user_id = (select g.id from gchat_users g where g.user_id = %s) 
+                and tp.post_id = p.id and tp.team_id = %s
+            )
+            ORDER BY p.submission_time DESC
+            LIMIT 100;
+        """, [user.id, team.id])
+
+        # Our query returns author and team objects as dictionary
+        # But Django expects them to proper User and Team objects
+        # So we do the conversion over here 
+        for p in posts:
+            p.author = User(**p._author)
+            
+        posts = self._append_votes_by_user(posts, user)
+        return posts
+
     def recent_posts_with_my_votes(self, user):
         posts = Post.objects.raw("""
             WITH post_teams as (

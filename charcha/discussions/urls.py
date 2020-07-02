@@ -21,4 +21,6 @@ urlpatterns = [
 
     url(r'^api/upload$', views.FileUploadView.as_view(), name="upload-files"),
 
+    url(r'^teams/(?P<team_id>\d+)/$', views.team_home, name="team_home"),
+
 ]

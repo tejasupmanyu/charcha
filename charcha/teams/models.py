@@ -2,6 +2,7 @@ from itertools import chain
 from django.db import models
 from django.conf import settings
 from django.db import connection, transaction
+from django.contrib.auth import get_user_model
 
 class GchatUser(models.Model):
     '''
@@ -87,7 +88,32 @@ class Team(models.Model):
 
     objects = TeamManager()
     name = models.CharField(max_length=100)
+    description = models.CharField(max_length=200, blank=True)
+    about = models.TextField(max_length=4096, blank=True)
     gchat_space = models.CharField(max_length=50, default=None, null=True)
+
+    def active_team_members(self):
+        return get_user_model().objects.raw("""
+            WITH last_activity as (
+            SELECT rs.team_id, rs.user_id, max(rs.submission_time) as last_activity FROM (
+                SELECT tp.team_id, p.author_id as user_id, p.submission_time
+                FROM team_posts tp JOIN posts p on tp.post_id = p.id
+                WHERE p.submission_time > 'now'::timestamp - '30 days'::interval
+                UNION ALL
+                SELECT tp.team_id, c.author_id as user_id, c.submission_time
+                FROM team_posts tp JOIN posts p on tp.post_id = p.id
+                    JOIN comments c on p.id = c.post_id
+                WHERE c.submission_time > 'now'::timestamp - '30 days'::interval
+            ) rs
+            GROUP BY rs.team_id, rs.user_id
+            )
+            SELECT u.id, u.username, 
+            u.first_name || ' ' || u.last_name as display_name, u.avatar
+            FROM last_activity la JOIN users u on la.user_id = u.id
+            WHERE la.team_id = %s
+            ORDER BY la.last_activity DESC
+            LIMIT 10;
+        """, [self.id])
 
     @transaction.atomic
     def sync_team_members(self, members):
