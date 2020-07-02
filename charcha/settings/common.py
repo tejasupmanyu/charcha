@@ -270,12 +270,16 @@ STATIC_HOST = os.environ.get('DJANGO_STATIC_HOST', '')
 STATIC_URL = '/static/'
 
 def cache_images_forever(headers, path, url):
-    """Force images to be cached forever"""
-    tokens = path.split(".")
-    if len(tokens) > 1:
-        extension = tokens[-1].lower()
-        if extension in ('png', 'jpg', 'jpeg', 'ico', 'gif'):
-            headers['Cache-Control'] = 'public, max-age=315360000'    
+    if url == '/manifest.json':
+        # Cache manifest.json for 2 days
+        headers['Cache-Control'] = 'public, max-age=172800'
+    else:
+        # Force images to be cached forever
+        tokens = path.split(".")
+        if len(tokens) > 1:
+            extension = tokens[-1].lower()
+            if extension in ('png', 'jpg', 'jpeg', 'ico', 'gif'):
+                headers['Cache-Control'] = 'public, max-age=315360000'
 
 WHITENOISE_ADD_HEADERS_FUNCTION = cache_images_forever
 WHITENOISE_ROOT = os.path.join(PROJECT_ROOT, 'public')
