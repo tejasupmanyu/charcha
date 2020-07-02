@@ -3,6 +3,7 @@ from django.db import models
 from django.conf import settings
 from django.db import connection, transaction
 from django.contrib.auth import get_user_model
+from django.core.exceptions import PermissionDenied
 
 class GchatUser(models.Model):
     '''
@@ -92,6 +93,13 @@ class Team(models.Model):
     about = models.TextField(max_length=4096, blank=True)
     gchat_space = models.CharField(max_length=50, default=None, null=True)
 
+    def can_view(self, user):
+        return Team.objects.belongs_to_all_teams(user, [self])
+
+    def check_view_permission(self, user):
+        if not self.can_view(user):
+            raise PermissionDenied("View denied on team " + str(self.id) + " to user " + str(user.id))
+    
     def active_team_members(self):
         return get_user_model().objects.raw("""
             WITH last_activity as (

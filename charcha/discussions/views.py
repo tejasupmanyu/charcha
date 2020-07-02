@@ -40,6 +40,7 @@ def homepage(request):
 @login_required
 def team_home(request, team_id):
     team = get_object_or_404(Team, pk=team_id)
+    team.check_view_permission(request.user)
     active_members = team.active_team_members()
     posts = Post.objects.posts_in_team_with_my_votes(request.user, team=team)
     return render(request, "home.html", context={"posts": posts, "team": team, "active_members": active_members})
