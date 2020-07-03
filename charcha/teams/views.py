@@ -47,8 +47,7 @@ def google_chatbot(request):
             # room name can be None for DMs between multiple people
             room_name = event['space'].get('displayName', None)
             sync_team(space, room_name)
-            text = "Done! I have created a new team in charcha. \
-                You can now have private discussions in charcha, and only members of this room will be able to participate."
+            text = "Done! I have created a new team in charcha. You can now have private discussions in charcha, and only members of this room will be able to participate."
 
     elif event['type'] == 'REMOVED_FROM_SPACE':
         if event['space']['type'] == 'DM':
