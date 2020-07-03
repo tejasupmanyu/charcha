@@ -99,3 +99,12 @@ $('.upvote-button').click(function(){
       return data
     }
   })();
+
+  /* Disable submit button once clicked to prevent accidental double submission */
+  $(document).ready(function(){
+    $("form").submit(function(e) {
+      $(e.target).find('button[type="submit"').attr('disabled', true);
+      $(e.target).find('input[type="submit"').attr('disabled', true);
+      return true;
+    });
+  });
