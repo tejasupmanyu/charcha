@@ -1,3 +1,8 @@
+/*
+* Adds Mentions to Trix editor using tribute
+* refer: https://github.com/basecamp/trix/issues/284
+*/
+
 var tribute = new Tribute({
         values: getUsers,
 });
@@ -42,6 +47,7 @@ function onMentionSelect(event) {
 $(document).ready(function(){
   tribute.attach($('trix-editor'));
   $('trix-editor').on('tribute-replaced', onMentionSelect)
+  // fix for non-replacing issue in chrome. refer: https://github.com/basecamp/trix/issues/284#issuecomment-601286174
   tribute.range.pasteHtml = function(html, startPos, endPos) {}
 });
 
