@@ -242,7 +242,7 @@ def profile(request, userid):
 def search_users(request):
     prefix = request.GET['q']
     users = User.objects.filter(username__istartswith=prefix)[:5]
-    return JsonResponse([{"key": x.username, "value": x.id} for x in users], safe=False)
+    return JsonResponse([{"username": x.username, "id": x.id} for x in users], safe=False)
 
 class FileUploadView(LoginRequiredMixin, View):
     def post(self, request, **kwargs):
