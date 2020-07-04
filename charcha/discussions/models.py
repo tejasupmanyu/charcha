@@ -27,7 +27,7 @@ cleaner = Cleaner(
             "figure": ("class", "data-trix-attachment", "data-trix-content-type", "data-trix-attributes"),
             "figcaption": ("class", ),
             "img": ("width", "height", 'src'),
-            "span": ("class", ),
+            "span": ("class", "data-user-id"),
         },
     strip=False
 )
@@ -385,6 +385,21 @@ class PostsManager(VotableManager):
         }
         return mapping[vote_type]
 
+def get_mentions(text, exclude=[]):
+    """
+    :param text: raw html text
+    :param exclude: list of user ids to exclude
+    :return: User list of mentions
+    """
+    regex = r"data-user-id=(\d+)>"
+    matches = re.finditer(regex, text, re.MULTILINE | re.IGNORECASE)
+    mentions = set()
+    for match in matches:
+        for group in match.groups():
+            mentions.add(group)
+    users = User.objects.filter(id__in=mentions).exclude(id__in=exclude)
+    return users
+
 class Post(Votable):
     class Meta:
         db_table = "posts"
@@ -490,6 +505,12 @@ class Post(Votable):
             "link": SERVER_URL + reverse("discussion", args=[self.id]),
             "link_title": "View Discussion"
         }
+        mentions = list(get_mentions(self.html))
+        for user in mentions:
+            if user.username == self.author.username:
+                continue
+            notify_space(user.gchat_space, event)
+
         for team in self.teams.all():
             space_id = team.gchat_space
             notify_space(space_id, event)
@@ -623,11 +644,15 @@ class Comment(Votable):
             "link": SERVER_URL + reverse("discussion", args=[self.post.id]) + "#comment-" + str(self.id),
             "link_title": "View Comment"
         }
-        
-        for watcher in self.post.watchers():
-            if watcher.username == self.author.username:
+
+        watchers = list(self.post.watchers())
+        mentions = list(get_mentions(self.html, [x.id for x in watchers]))
+        notifications_list = watchers + mentions
+        for user in notifications_list:
+            if user.username == self.author.username:
                 continue
-            notify_space(watcher.gchat_space, event)
+            notify_space(user.gchat_space, event)
+
 
     def __str__(self):
         return self.html

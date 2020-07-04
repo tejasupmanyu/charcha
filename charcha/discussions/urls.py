@@ -20,6 +20,7 @@ urlpatterns = [
     url(r'^api/comments/(?P<comment_id>\d+)/downvote$', views.downvote_comment, name="downvote_comment"),
 
     url(r'^api/upload$', views.FileUploadView.as_view(), name="upload-files"),
+    url(r'^api/users/search', views.search_users, name="search_users"),
 
     url(r'^teams/(?P<team_id>\d+)/$', views.team_home, name="team_home"),
 

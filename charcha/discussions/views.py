@@ -238,6 +238,12 @@ def profile(request, userid):
     user = get_object_or_404(User, id=userid)
     return render(request, "profile.html", context={"user": user })
 
+@login_required
+def search_users(request):
+    prefix = request.GET['q']
+    users = User.objects.filter(username__istartswith=prefix)[:5]
+    return JsonResponse([{"key": x.username, "value": x.id} for x in users], safe=False)
+
 class FileUploadView(LoginRequiredMixin, View):
     def post(self, request, **kwargs):
         file_obj = request.FILES.get('file')

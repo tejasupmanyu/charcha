@@ -102,10 +102,16 @@ $('.upvote-button').click(function(){
 
 function setupMentions() {
   var tribute = new Tribute({
-          values: [
-              {key: 'Phil Heartman', value: 'pheartman'},
-              {key: 'Gordon Ramsey', value: 'gramsey'}
-          ],
+          values: function(text, cb) {
+            $.get("/api/users/search?q="+text)
+            .done(function(data){
+              cb(data)
+            })
+            .fail(function(data){
+              console.error(data)
+              cb([])
+            });
+          },
   });
   tribute.attach($('trix-editor'));
   var editor = $('trix-editor')[0].editor;
@@ -121,7 +127,7 @@ function setupMentions() {
     mention = event.detail.item.original
     attachment = new Trix.Attachment({
       user_id: mention.value,
-      content: "<span class='mention'>@"+ mention.value + "</span>",
+      content: "<span class='mention' data-user-id=" + mention.value + ">@"+ mention.key + "</span>",
     })
     editor.insertAttachment(attachment)
     editor.insertString(" ") // add an empty space to continue
