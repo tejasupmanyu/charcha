@@ -113,3 +113,18 @@ trix-toolbar .trix-button-group--history-tools,
 .indent-12 {
   margin-left: 110px;
 }
+
+/* Mention Styles */
+.tribute-container ul {
+    background: #fff;
+    border: 1px solid #ebebeb;
+}
+
+.tribute-container li.highlight {
+    background: #ff5722;
+    color: #fff;
+}
+
+span.mention {
+    color: #ff5722;
+}
