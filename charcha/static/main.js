@@ -100,6 +100,36 @@ $('.upvote-button').click(function(){
     }
   })();
 
+function setupMentions() {
+  var tribute = new Tribute({
+          values: [
+              {key: 'Phil Heartman', value: 'pheartman'},
+              {key: 'Gordon Ramsey', value: 'gramsey'}
+          ],
+  });
+  tribute.attach($('trix-editor'));
+  var editor = $('trix-editor')[0].editor;
+
+  function replaced(event) {
+    // delete the matching text and the at sign
+    match_size = (event.detail.item.string.match(/<span>/g) || []).length + 1
+    for(var i=0; i<=match_size; i++) {
+      editor.deleteInDirection("backward")
+    }
+
+    // add the mention as an attachment
+    mention = event.detail.item.original
+    attachment = new Trix.Attachment({
+      user_id: mention.value,
+      content: "<span class='mention'>@"+ mention.value + "</span>",
+    })
+    editor.insertAttachment(attachment)
+    editor.insertString(" ") // add an empty space to continue
+  }
+
+  $('trix-editor').on('tribute-replaced', replaced)
+}
+
   /* Disable submit button once clicked to prevent accidental double submission */
   $(document).ready(function(){
     $("form").submit(function(e) {
@@ -107,4 +137,6 @@ $('.upvote-button').click(function(){
       $(e.target).find('input[type="submit"').attr('disabled', true);
       return true;
     });
+
+    setupMentions();
   });
