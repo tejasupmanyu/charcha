@@ -108,3 +108,21 @@ $('.upvote-button').click(function(){
       return true;
     });
   });
+
+  $(document).ready(function(){
+    $('a[data-action="reply-to-comment"]').click(function(e) {
+      e.preventDefault();
+      var anchor = $(e.target);
+      var parentCommentId = anchor.data("comment-id");
+      var commentContainer = anchor.parents('div[data-container="comment"]').first();
+      var template = $("#reply-template").html();
+      var html = template.replace(new RegExp("<<commentid>>"), parentCommentId)
+      commentContainer.append(html);
+      commentContainer.find('button[data-action="cancel-reply"]').click(function(e) {
+        var replyButton = $(e.target);
+        var replyFormContainer = replyButton.parents('div[data-container="reply-form"]').first();
+        replyFormContainer.remove();
+      });
+      return true;
+    });
+  });

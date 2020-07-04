@@ -95,7 +95,7 @@ class ReplyToComment(LoginRequiredMixin, View):
 
         comment = parent_comment.reply(form.cleaned_data['html'], request.user)
         post_url = reverse('discussion', args=[parent_comment.post.id])
-        return HttpResponseRedirect(post_url)
+        return HttpResponseRedirect(post_url + "#comment-" + str(comment.id))
 
 class EditComment(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
