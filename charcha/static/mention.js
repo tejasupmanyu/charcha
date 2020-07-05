@@ -4,17 +4,16 @@
 */
 
 var tribute = new Tribute({
-        values: getUsers,
+        values: [],
 });
 
-function getUsers(text, cb) {
-  $.get("/api/users/search?q="+text)
+function getUsers() {
+  $.get("/api/users")
   .done(function(data){
-    cb(transformUsers(data))
+    tribute.append(0, transformUsers(data))
   })
   .fail(function(data){
     console.error(data)
-    cb([])
   });
 }
 
@@ -46,8 +45,9 @@ function onMentionSelect(event) {
 
 $(document).ready(function(){
   tribute.attach($('trix-editor'));
-  $('trix-editor').on('tribute-replaced', onMentionSelect)
+  $('trix-editor').on('tribute-replaced', onMentionSelect);
   // fix for non-replacing issue in chrome. refer: https://github.com/basecamp/trix/issues/284#issuecomment-601286174
   tribute.range.pasteHtml = function(html, startPos, endPos) {}
+  getUsers();
 });
 

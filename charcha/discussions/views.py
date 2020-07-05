@@ -25,6 +25,7 @@ from .models import UPVOTE, DOWNVOTE, FLAG
 from .models import Post, Comment, Vote, User, PostWithCustomGet, CommentWithCustomGet
 from .models import update_gchat_space
 from charcha.teams.models import Team
+from django.views.decorators.cache import cache_control
 
 regex = re.compile(r"<h[1-6]>([^<^>]+)</h[1-6]>")
 def prepare_html_for_edit(html):
@@ -239,9 +240,9 @@ def profile(request, userid):
     return render(request, "profile.html", context={"user": user })
 
 @login_required
-def search_users(request):
-    prefix = request.GET['q']
-    users = User.objects.filter(username__istartswith=prefix)[:5]
+@cache_control(private=True, max_age=3600)
+def get_users(request):
+    users = User.objects.all()
     return JsonResponse([{"username": x.username, "id": x.id} for x in users], safe=False)
 
 class FileUploadView(LoginRequiredMixin, View):
