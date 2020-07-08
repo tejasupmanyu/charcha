@@ -17,6 +17,14 @@ from django.db import transaction
 
 import re
 
+comment_cleaner = Cleaner(
+    tags=['a', 'b', 'em', 'i', 'strong',
+    ],
+    attributes={
+        "a": ("href", "name", "target", "title", "id", "rel", "data-trix-attachment",),
+    },
+    strip=True
+)
 cleaner = Cleaner(
     tags=['a', 'b', 'blockquote', 'code', 'em', 'i', 'li', 'ol', 'strong', 'ul',
         'h1', 'h2', 'h3', 'p', 'br', 'sub', 'sup', 'hr',
@@ -391,8 +399,14 @@ class Post(Votable):
         index_together = [
             ["submission_time",],
         ]
+    
     objects = PostsManager()
-    title = models.CharField(max_length=120)
+    # parent_post = models.ForeignKey(
+    #     'self', 
+    #     null=True,
+    #     on_delete=models.PROTECT, default=None)
+    
+    title = models.CharField(max_length=120, null=True)
     url = models.URLField(blank=True)
     html = models.TextField(blank=True, max_length=8192)
     submission_time = models.DateTimeField(auto_now_add=True)
@@ -508,7 +522,8 @@ class CommentsManager(VotableManager):
                 c.wbs, length(c.wbs)/5 as indent, 
                 c.upvotes, c.downvotes, c.flags,
                 c.upvotes - c.downvotes as score,
-                up.is_upvoted, down.is_downvoted, u.avatar
+                up.is_upvoted, down.is_downvoted, u.avatar,
+                u.first_name, u.last_name
                 FROM comments c 
                 INNER JOIN users u on c.author_id = u.id
                 LEFT OUTER JOIN (
@@ -532,6 +547,7 @@ class CommentsManager(VotableManager):
                     post.id])
             
             comments = []
+            parent = None
             for row in cursor.fetchall():
                 comment = self.model(
                         id = row[0], html = row[1], 
@@ -540,13 +556,19 @@ class CommentsManager(VotableManager):
                         upvotes = row[7], downvotes=row[8],
                         flags = row[9]
                     )
-                author = User(id=row[2], username=row[3], avatar=row[13])
+                author = User(id=row[2], username=row[3], avatar=row[13], first_name=row[14], last_name=row[15])
                 comment.author = author
                 comment.indent = row[6]
                 comment.score = row[10]
                 comment.is_upvoted = True if row[11] else False
                 comment.is_downvoted = True if row[12] else False
-                comments.append(comment)
+
+                if comment.indent == 1:
+                    parent = comment
+                    parent.subcomments = []
+                    comments.append(comment)
+                else:
+                    parent.subcomments.append(comment)
 
             return comments
 
@@ -557,11 +579,10 @@ class Comment(Votable):
             ["post", "wbs"],
         ]
     objects = CommentsManager()
-
     post = models.ForeignKey(Post, on_delete=models.PROTECT, related_name="comments")
     parent_comment = models.ForeignKey(
         'self', 
-        null=True, blank=True,
+        null=True,
         on_delete=models.PROTECT)
     html = models.TextField(max_length=8192)
     submission_time = models.DateTimeField(auto_now_add=True)
@@ -589,7 +610,7 @@ class Comment(Votable):
             raise PermissionDenied("Edit denied on comment " + str(self.id) + " to user " + str(user.id))
     
     def save(self, *args, **kwargs):
-        self.html = clean_and_normalize_html(self.html)
+        self.html = comment_cleaner.clean(self.html)
         super().save(*args, **kwargs)
 
     def reply(self, html, author):

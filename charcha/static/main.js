@@ -114,15 +114,17 @@ $('.upvote-button').click(function(){
       e.preventDefault();
       var anchor = $(e.target);
       var parentCommentId = anchor.data("comment-id");
-      var commentContainer = anchor.parents('div[data-container="comment"]').first();
       var template = $("#reply-template").html();
       var html = template.replace(new RegExp("<<commentid>>"), parentCommentId)
+      
+      var commentContainer = $('div[data-container="subcomments-' + parentCommentId + '"]').first();
       commentContainer.append(html);
       commentContainer.find('button[data-action="cancel-reply"]').click(function(e) {
         var replyButton = $(e.target);
         var replyFormContainer = replyButton.parents('div[data-container="reply-form"]').first();
         replyFormContainer.remove();
       });
+      anchor.remove();
       return true;
     });
   });

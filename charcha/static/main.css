@@ -9,10 +9,22 @@ h4 {
 }
 
 a {
-  color: inherit;
+  color: #ff5722;
 }
 a:hover {
+  text-decoration: underline;
   color: #ff5722;
+}
+figure {
+  display: flex !important;
+  align-items: flex-start;
+}
+figure img {
+  padding: 5px;
+}
+figure figcaption {
+  margin-top: 10px;
+  font-size: 1.5rem;
 }
 .charcha-btn {
   border-color: #ff5722;
@@ -74,42 +86,23 @@ div.separator {
   padding-bottom: 16px;
 }
 
+.subcomments trix-toolbar .trix-button-group--block-tools,
+.subcomments trix-toolbar .trix-button-group--file-tools
+ {
+  display:none;
+}
+
+.subcomments .trix-content br {
+  display: none;
+}
+
+.subcomments trix-editor {
+  width: 80%;
+  margin-right: 5px;
+}
+
 trix-toolbar .trix-button-group--history-tools,
 .trix-button--icon-increase-nesting-level,
 .trix-button--icon-decrease-nesting-level {
   display: none;
-}
-
-.indent-2 {
-  margin-left: 10px;
-}
-.indent-3 {
-  margin-left: 20px;
-}
-.indent-4 {
-  margin-left: 30px;
-}
-.indent-5 {
-  margin-left: 40px;
-}
-.indent-6 {
-  margin-left: 50px;
-}
-.indent-7 {
-  margin-left: 60px;
-}
-.indent-8 {
-  margin-left: 70px;
-}
-.indent-9 {
-  margin-left: 80px;
-}
-.indent-10 {
-  margin-left: 90px;
-}
-.indent-11 {
-  margin-left: 100px;
-}
-.indent-12 {
-  margin-left: 110px;
 }

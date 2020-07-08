@@ -1,4 +1,4 @@
-<button style="border-left: 0" data-object-type="{{obj_type}}" data-object-id="{{obj.id}}"  
+<button style="border-left: 0; padding: 0" data-object-type="{{obj_type}}" data-object-id="{{obj.id}}"  
   type="button" class="btn upvote-button p-0 mr-1" 
   {% if request.user.id == obj.author.id %} disabled {% endif %}
 >
