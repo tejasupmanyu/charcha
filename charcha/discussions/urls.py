@@ -3,7 +3,9 @@ from . import views
 
 urlpatterns = [
     url(r'^$', views.homepage, name="home"),
-    url(r'^discuss/(?P<post_id>\d+)/$', views.DiscussionView.as_view(), name="discussion"),
+    url(r'^discuss/(?P<post_id>\d+)/$', views.PostView.as_view(), name="post_old"),
+    url(r'^posts/(?P<post_id>\d+)/$', views.PostView.as_view(), name="post_optional_slug"),
+    url(r'^posts/(?P<post_id>\d+)/(?P<slug>[a-zA-Z0-9-]+)/$', views.PostView.as_view(), name="post"),
     url(r'^teams/(?P<team_id>\d+)/new/(?P<post_type>\w+)/$', views.NewPostView.as_view(), name="new-post"),
     url(r'^post/(?P<post_id>\d+)/edit$', views.EditPostView.as_view(), name="edit-discussion"),
     

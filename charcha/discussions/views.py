@@ -3,7 +3,8 @@ import re
 import os
 from uuid import uuid4
 
-from django.http import HttpResponse, JsonResponse, HttpResponseRedirect, HttpResponseBadRequest
+from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponseRedirect, HttpResponseBadRequest, HttpResponsePermanentRedirect
 from django.views import View 
 from django.views.decorators.http import require_http_methods
 from django import forms
@@ -54,15 +55,19 @@ class CommentForm(forms.ModelForm):
         }
         widgets = {'html': forms.HiddenInput()}
 
-class DiscussionView(LoginRequiredMixin, View):
-    def get(self, request, post_id):
+class PostView(LoginRequiredMixin, View):
+    def get(self, request, post_id, slug=None):
         post = Post.objects.get_post_with_my_votes(post_id, 
                     request.user)
+        if not slug or post.slug != slug:
+            post_url = reverse('post', args=[post.id, post.slug])
+            return HttpResponsePermanentRedirect(post_url)
+
         comments = Comment.objects.best_ones_first(post, 
                         request.user)
         form = CommentForm()
         context = {"post": post, "comments": comments, "form": form}
-        return render(request, "discussion.html", context=context)
+        return render(request, "post.html", context=context)
 
     def post(self, request, post_id):
         post = Post.objects.get_post_with_my_votes(post_id, 
@@ -70,11 +75,11 @@ class DiscussionView(LoginRequiredMixin, View):
         form = CommentForm(request.POST)
         if form.is_valid():
             comment = post.add_comment(form.cleaned_data['html'], request.user)
-            post_url = reverse('discussion', args=[post.id])
+            post_url = reverse('post', args=[post.id, post.slug])
             return HttpResponseRedirect(post_url)
         else:
             context = {"post": post, "form": form, "comments": []}
-            return render(request, "discussion.html", context=context)
+            return render(request, "post.html", context=context)
 
 class ReplyToComment(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
@@ -94,7 +99,7 @@ class ReplyToComment(LoginRequiredMixin, View):
             return render(request, "reply-to-comment.html", context=context)
 
         comment = parent_comment.reply(form.cleaned_data['html'], request.user)
-        post_url = reverse('discussion', args=[parent_comment.post.id])
+        post_url = reverse('post', args=[parent_comment.post.id, parent_comment.post.slug])
         return HttpResponseRedirect(post_url + "#comment-" + str(parent_comment.id))
 
 class EditComment(LoginRequiredMixin, View):
@@ -114,7 +119,7 @@ class EditComment(LoginRequiredMixin, View):
             return render(request, "edit-comment.html", context=context)
         else:
             comment.edit_comment(form.cleaned_data['html'], request.user)
-        post_url = reverse('discussion', args=[comment.post.id])
+        post_url = reverse('post', args=[comment.post.id, comment.post.slug])
         return HttpResponseRedirect(post_url)
 
 class TeamSelect(forms.SelectMultiple):
@@ -175,7 +180,7 @@ class NewPostView(LoginRequiredMixin, View):
             post = form.save(commit=False)
             post.post_type = Post.get_post_type(post_type)
             post = Post.objects.new_post(request.user, post, [team])
-            new_post_url = reverse('discussion', args=[post.id])
+            new_post_url = reverse('post', args=[post.id, post.slug])
             return HttpResponseRedirect(new_post_url)
         else:
             return render(request, "new-post.html", context={"form": form})
@@ -203,7 +208,7 @@ class EditPostView(LoginRequiredMixin, View):
             return render(request, "edit-post.html", context=context)
         else:
             post.edit_post(form.cleaned_data['title'], form.cleaned_data['html'], request.user)
-        post_url = reverse('discussion', args=[post.id])
+        post_url = reverse('post', args=[post.id, post.slug])
         return HttpResponseRedirect(post_url)
 
 @login_required

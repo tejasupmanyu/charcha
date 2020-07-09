@@ -410,6 +410,10 @@ class Post(Votable):
     }
     
     @staticmethod
+    def get_top_level_post_types():
+        return [POST.DISCUSSION, Post.QUESTION, Post.FEEDBACK, Post.ANNOUNCEMENT]
+
+    @staticmethod
     def get_post_type(post_type_str):
         post_type = Post._POST_TYPES.get(post_type_str.lower(), None)
         if post_type is None:
@@ -446,6 +450,7 @@ class Post(Votable):
         default=DISCUSSION)
 
     title = models.CharField(max_length=120, null=True)
+    slug = models.CharField(max_length=120)
     html = models.TextField(blank=True, max_length=8192)
     submission_time = models.DateTimeField(auto_now_add=True)
     teams = models.ManyToManyField(Team, through=TeamPosts, related_name="posts")

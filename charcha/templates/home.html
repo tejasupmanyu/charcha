@@ -61,7 +61,7 @@
     {% endif %}
     <div class="media-body">
     <h3>
-      <div class="post-title"><a href="{% url 'discussion' post.id %}">{{ post.title }}</a></div>
+      <div class="post-title"><a href="{% url 'post' post.id post.slug %}">{{ post.title }}</a></div>
       <small class="post-metadata text-muted">
           by <a href="{% url 'profile' post.author.id %}">{{ post.author }}</a> |
           {% if post.teamsobj %}
