@@ -394,6 +394,35 @@ class PostsManager(VotableManager):
         return mapping[vote_type]
 
 class Post(Votable):
+    DISCUSSION = 0
+    QUESTION = 1
+    FEEDBACK = 2
+    ANNOUNCEMENT = 3
+    RESPONSE = 16
+    ANSWER = 17
+    _POST_TYPES = {
+        "discussion": DISCUSSION,
+        "announcement": ANNOUNCEMENT,
+        "question": QUESTION,
+        "feedback": FEEDBACK,
+        "response": RESPONSE,
+        "answer": ANSWER
+    }
+    
+    @staticmethod
+    def get_post_type(post_type_str):
+        post_type = Post._POST_TYPES.get(post_type_str.lower(), None)
+        if post_type is None:
+            raise Exception("Invalid Post Type - " + str(post_type_str))
+        return post_type
+
+    @property
+    def post_type_for_display(self):
+        for post_type, _id in Post._POST_TYPES.items():
+            if self.post_type == _id:
+                return post_type
+        return None
+
     class Meta:
         db_table = "posts"
         index_together = [
@@ -401,16 +430,28 @@ class Post(Votable):
         ]
     
     objects = PostsManager()
-    # parent_post = models.ForeignKey(
-    #     'self', 
-    #     null=True,
-    #     on_delete=models.PROTECT, default=None)
-    
+    parent_post = models.ForeignKey(
+        'self', 
+        null=True,
+        on_delete=models.PROTECT, default=None)
+    post_type = models.IntegerField(
+        choices = (
+            (DISCUSSION, 'Discussion'),
+            (QUESTION, 'Question'),
+            (FEEDBACK, 'Feedback'),
+            (ANNOUNCEMENT, 'Announcement'),
+            (RESPONSE, 'Response'),
+            (ANSWER, 'Answer'),
+        ),
+        default=DISCUSSION)
+
     title = models.CharField(max_length=120, null=True)
-    url = models.URLField(blank=True)
     html = models.TextField(blank=True, max_length=8192)
     submission_time = models.DateTimeField(auto_now_add=True)
     teams = models.ManyToManyField(Team, through=TeamPosts, related_name="posts")
+    sticky = models.BooleanField(default=False)
+    accepted_answer = models.BooleanField(default=False)
+    resolved = models.BooleanField(default=False)
     num_comments = models.IntegerField(default=0)
 
     def can_view(self, user):

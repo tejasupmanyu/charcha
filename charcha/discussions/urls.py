@@ -4,8 +4,8 @@ from . import views
 urlpatterns = [
     url(r'^$', views.homepage, name="home"),
     url(r'^discuss/(?P<post_id>\d+)/$', views.DiscussionView.as_view(), name="discussion"),
-    url(r'^post/(?P<post_id>\d+)/edit$', views.EditDiscussion.as_view(), name="edit-discussion"),
-    url(r'^start-discussion/$', views.StartDiscussionView.as_view(), name="start-discussion"),
+    url(r'^teams/(?P<team_id>\d+)/new/(?P<post_type>\w+)/$', views.NewPostView.as_view(), name="new-post"),
+    url(r'^post/(?P<post_id>\d+)/edit$', views.EditPostView.as_view(), name="edit-discussion"),
     
     url(r'^profile/me/$', views.myprofile, name="myprofile"),
     url(r'^profile/(?P<userid>\d+)/$', views.profile, name="profile"),

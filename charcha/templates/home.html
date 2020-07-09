@@ -12,12 +12,44 @@
       <h2 class="mb-0">{{ team.name | title }}</h2>
       <small class="text-muted">{{ team.description }}</small>
     </div>
+    <div class="dropdown show">
+      <a class="btn charcha-btn dropdown-toggle" href="javascript:void(0)" role="button" id="newPostMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+       New
+      </a>
+      <div class="dropdown-menu" aria-labelledby="newPostMenuLink">
+        <a class="dropdown-item" href="{% url "new-post" team.id "feedback" %}">
+          <div class="d-flex flex-column">
+            <span>Request Feedback</span>
+            <small class="text-muted">on a design, proposal, code etc.</small>
+          </div>
+        </a>
+        <a class="dropdown-item" href="{% url "new-post" team.id "question" %}">
+          <div class="d-flex flex-column">
+            <span>Question</span>
+            <small class="text-muted">on company issues, technology, etc.</small>
+          </div>
+        </a>
+        <a class="dropdown-item" href="{% url "new-post" team.id "discussion" %}">
+          <div class="d-flex flex-column">
+            <span>Discussion</span>
+            <small class="text-muted">On any topic relevant to the group</small>
+          </div>
+        </a>
+        <a class="dropdown-item" href="{% url "new-post" team.id "announcement" %}">
+          <div class="d-flex flex-column">
+            <span>Announcement</span>
+            <small class="text-muted">Inform the group of new developments</small>
+          </div>
+        </a>
+      </div>
+    </div>
     <!-- <div class="align-self-end">
       <small><a href="/">Manage Team</a></small>
     </div> -->
     {% else %}
-      <h2 class="mb-0">All Discussions</h2>
+    <div><h2 class="mb-0">All Discussions</h2></div>
     {% endif %}
+    
   </div>
   <div class="post-list">
   {% for post in posts %}

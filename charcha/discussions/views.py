@@ -127,21 +127,20 @@ class TeamSelect(forms.SelectMultiple):
         rendered = super().render(*args, **kwargs)
         return rendered.replace('multiple>\n', '>\n')
         
-class StartDiscussionForm(forms.ModelForm):
+class NewPostForm(forms.ModelForm):
     class Meta:
         model = Post
-        fields = ['teams', 'title', 'html']
+        fields = ['title', 'html']
         labels = {
-            'teams': 'Teams',
             'title': 'Title',
             'html': 'Details'
         }
         widgets = {
-            'html': forms.HiddenInput(),
-            'teams': TeamSelect()}
+            'html': forms.HiddenInput()
+        }
 
     def clean(self):
-        cleaned_data = super(StartDiscussionForm, self).clean()
+        cleaned_data = super(NewPostForm, self).clean()
         html = cleaned_data.get("html")
         if not html:
             raise forms.ValidationError(
@@ -149,49 +148,59 @@ class StartDiscussionForm(forms.ModelForm):
             )
         return cleaned_data
 
-class StartDiscussionView(LoginRequiredMixin, View):
-    def team_choices(self, user):
-        teams = Team.objects.my_teams(user)
-        return [(team.id, team.name) for team in teams]
+class NewPostView(LoginRequiredMixin, View):
+    def get(self, request, team_id, post_type):
+        team = Team.objects.get(id=team_id)
+        team.check_view_permission(request.user)
+        post_type_id = Post.get_post_type(post_type)
 
-    def get(self, request):
-        form = StartDiscussionForm(initial={"author": request.user})
-        form.fields['teams'].choices = self.team_choices(request.user)
-        return render(request, "submit.html", context={"form": form})
+        if post_type == "discussion":
+            post_type_for_display = "Start a Discussion"
+        elif post_type == "question":
+            post_type_for_display = "Ask a Question"
+        elif post_type == "feedback":
+            post_type_for_display = "Request Feedback"
+        elif post_type == "announcement":
+            post_type_for_display = "New Announcment"
+        else:
+            raise Exception("Invalid Post Type")
+        form = NewPostForm()
+        return render(request, "new-post.html", context={"form": form, "post_type_for_display": post_type_for_display})
 
-    def post(self, request):
-        form = StartDiscussionForm(request.POST)
+    def post(self, request, team_id, post_type):
+        team = Team.objects.get(id=team_id)
+        team.check_view_permission(request.user)
+        form = NewPostForm(request.POST)
         if form.is_valid():
             post = form.save(commit=False)
-            teams = form.cleaned_data["teams"]
-            post = Post.objects.new_post(request.user, post, teams)
+            post.post_type = Post.get_post_type(post_type)
+            post = Post.objects.new_post(request.user, post, [team])
             new_post_url = reverse('discussion', args=[post.id])
             return HttpResponseRedirect(new_post_url)
         else:
-            form.fields['teams'].choices = self.team_choices(request.user)
-            return render(request, "submit.html", context={"form": form})
+            return render(request, "new-post.html", context={"form": form})
 
-class EditDiscussionForm(StartDiscussionForm):
+class EditPostForm(NewPostForm):
     class Meta:
         model = Post
         fields = ['title', 'html']
         widgets = {'html': forms.HiddenInput()}
 
-class EditDiscussion(LoginRequiredMixin, View):
+class EditPostView(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
         post = get_object_or_404(PostWithCustomGet, pk=kwargs['post_id'], requester=request.user)
         post.html = prepare_html_for_edit(post.html)
-        form = EditDiscussionForm(instance=post)
+        form = EditPostForm(instance=post)
         context = {"form": form}
-        return render(request, "edit-discussion.html", context=context)
+        return render(request, "edit-post.html", context=context)
 
     def post(self, request, **kwargs):
         post = get_object_or_404(PostWithCustomGet, pk=kwargs['post_id'], requester=request.user)
-        form = EditDiscussionForm(request.POST, instance=post)
+        form = EditPostForm(request.POST, instance=post)
 
         if not form.is_valid():
             context = {"form": form}
-            return render(request, "edit-discussion.html", context=context)
+            return render(request, "edit-post.html", context=context)
         else:
             post.edit_post(form.cleaned_data['title'], form.cleaned_data['html'], request.user)
         post_url = reverse('discussion', args=[post.id])
