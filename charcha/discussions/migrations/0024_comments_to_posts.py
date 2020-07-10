@@ -43,6 +43,12 @@ POINT_NESTED_COMMENTS_TO_NEWLY_CREATED_POST = """
     AND parent_comment.id = p.temp_comment_id;
 """
 
+COPY_VOTES_TO_NEW_POST = """
+    INSERT INTO votes(object_id, type_of_vote, submission_time, content_type_id, voter_id)
+    SELECT p.id, v.type_of_vote, v.submission_time, 8, v.voter_id 
+    FROM votes v JOIN posts p on v.object_id = p.temp_comment_id and v.content_type_id = 7;
+"""
+
 SOFT_DELETE_ALL_PARENT_COMMENTS = """
     UPDATE comments as c
     SET post_id = 1
@@ -60,5 +66,6 @@ class Migration(migrations.Migration):
         migrations.RunPython(top_level_comments_to_posts),
         migrations.RunSQL(COPY_SUBMISSION_TIME),
         migrations.RunSQL(POINT_NESTED_COMMENTS_TO_NEWLY_CREATED_POST),
+        migrations.RunSQL(COPY_VOTES_TO_NEW_POST),
         migrations.RunSQL(SOFT_DELETE_ALL_PARENT_COMMENTS),
     ]
