@@ -22,11 +22,13 @@ def top_level_comments_to_posts(apps, schema_editor):
     Post.objects.bulk_create(post_objs, batch_size=100)
 
 POINT_NESTED_COMMENTS_TO_NEWLY_CREATED_POST = """
-    UPDATE comments as c
+    UPDATE comments as child_comment
     SET post_id = p.id
-    FROM posts as p
-    WHERE c.parent_comment_id = p.temp_comment_id
-    AND length(wbs) > 5;
+    FROM comments as parent_comment, posts as p
+    WHERE child_comment.post_id = parent_comment.post_id
+    AND substring(child_comment.wbs, 1, 5) = parent_comment.wbs
+    AND length(child_comment.wbs) > 5
+    AND parent_comment.id = p.temp_comment_id;
 """
 
 SOFT_DELETE_ALL_PARENT_COMMENTS = """
