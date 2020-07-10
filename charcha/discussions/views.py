@@ -57,20 +57,18 @@ class CommentForm(forms.ModelForm):
 
 class PostView(LoginRequiredMixin, View):
     def get(self, request, post_id, slug=None):
-        post = Post.objects.get_post_with_my_votes(post_id, 
+        post, child_posts = Post.objects.get_post_details(post_id, 
                     request.user)
         if not slug or post.slug != slug:
             post_url = reverse('post', args=[post.id, post.slug])
             return HttpResponsePermanentRedirect(post_url)
 
-        comments = Comment.objects.best_ones_first(post, 
-                        request.user)
         form = CommentForm()
-        context = {"post": post, "comments": comments, "form": form}
+        context = {"post": post, "child_posts": child_posts, "form": form}
         return render(request, "post.html", context=context)
 
     def post(self, request, post_id):
-        post = Post.objects.get_post_with_my_votes(post_id, 
+        post, child_posts = Post.objects.get_post_details(post_id, 
                     request.user)
         form = CommentForm(request.POST)
         if form.is_valid():
@@ -78,7 +76,7 @@ class PostView(LoginRequiredMixin, View):
             post_url = reverse('post', args=[post.id, post.slug])
             return HttpResponseRedirect(post_url)
         else:
-            context = {"post": post, "form": form, "comments": []}
+            context = {"post": post, "child_posts": child_posts, "form": form}
             return render(request, "post.html", context=context)
 
 class ReplyToComment(LoginRequiredMixin, View):

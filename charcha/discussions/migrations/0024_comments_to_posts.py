@@ -15,12 +15,24 @@ def top_level_comments_to_posts(apps, schema_editor):
         post.author = comment.author
         post.upvotes = comment.upvotes
         post.downvotes = comment.downvotes
+        # setting submission_time doesn't really work
+        # see COPY_SUBMISSION_TIME below
         post.submission_time = comment.submission_time
         post.temp_comment_id = comment.id
         post_objs.append(post)
     
     Post.objects.bulk_create(post_objs, batch_size=100)
 
+# Post.submission_time has an auto_now set to true
+# So when we created the post above, 
+# it automatically set the timestamp to now, even though we explicitly tried to set it
+# This query does a bulk update to fix the situation
+COPY_SUBMISSION_TIME = """
+    UPDATE posts as p
+    SET submission_time = c.submission_time
+    FROM comments as c
+    WHERE p.temp_comment_id = c.id;
+"""
 POINT_NESTED_COMMENTS_TO_NEWLY_CREATED_POST = """
     UPDATE comments as child_comment
     SET post_id = p.id
@@ -46,6 +58,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(top_level_comments_to_posts),
+        migrations.RunSQL(COPY_SUBMISSION_TIME),
         migrations.RunSQL(POINT_NESTED_COMMENTS_TO_NEWLY_CREATED_POST),
         migrations.RunSQL(SOFT_DELETE_ALL_PARENT_COMMENTS),
     ]

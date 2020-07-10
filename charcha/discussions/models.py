@@ -8,6 +8,7 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import F
+from django.db.models import Q
 from django.urls import reverse
 from charcha.teams.bot import notify_space
 from charcha.teams.models import Team
@@ -276,6 +277,43 @@ class PostsManager(VotableManager):
             TeamPosts(post=post, team=team).save()
         post.on_new_post()
         return post
+
+    def get_post_details(self, post_id, user):
+        # Get the post and all child posts in a single query
+        # The first object is the parent post
+        # Subsequent objects are child posts, sorted by submission_time in ascending order
+        post_and_child_posts = Post.objects\
+            .annotate(score=F('upvotes') - F('downvotes'))\
+            .select_related("author")\
+            .prefetch_related("comments__author")\
+            .filter(Q(id = post_id) | Q(parent_post__id = post_id))\
+            .order_by(F('parent_post').desc(nulls_first=True), "submission_time")
+        
+        parent_post = post_and_child_posts[0]
+        child_posts = post_and_child_posts[1:]
+        parent_post.check_view_permission(user)
+
+        # post_dict = {}
+        # post_ids = []
+        # for post in post_and_child_posts:
+        #     post_ids.append(post.id)
+        #     post_dict[post.id] = post
+        #     post.comments = []
+
+        # # Fetch comments for all parent and child posts
+        # comments = Comment.objects\
+        #     .annotate(score=F('upvotes') - F('downvotes'))\
+        #     .select_related("author")\
+        #     .filter(id_in = post_ids)\
+        #     .order_by("submission_time")
+
+        # # Now associate comment with the corresponding post
+        # for comment in comments:
+        #     # Hopefully, this doesn't trigger another query
+        #     post_id = comment.post.id
+        #     post_dict[post_id].comments.append(comment)
+
+        return (parent_post, child_posts)
 
     def get_post_with_my_votes(self, post_id, user):
         post = Post.objects\
@@ -556,7 +594,12 @@ class Post(Votable):
             notify_space(space_id, event)
 
     def __str__(self):
-        return self.title
+        if self.title:
+            return self.title
+        elif self.html:
+            return self.html[:120]
+        else:
+            return "Post id = " + str(self.id)
 
 class CommentsManager(VotableManager):
     def best_ones_first(self, post, user):
