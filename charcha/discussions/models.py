@@ -458,6 +458,7 @@ class Post(Votable):
     accepted_answer = models.BooleanField(default=False)
     resolved = models.BooleanField(default=False)
     num_comments = models.IntegerField(default=0)
+    temp_comment_id = models.IntegerField(default=0)
 
     def can_view(self, user):
         'User can view the post if he belongs to any team(s) the post is a part of'
@@ -621,9 +622,7 @@ class CommentsManager(VotableManager):
 class Comment(Votable):
     class Meta:
         db_table = "comments"
-        unique_together = [
-            ["post", "wbs"],
-        ]
+    
     objects = CommentsManager()
     post = models.ForeignKey(Post, on_delete=models.PROTECT, related_name="comments")
     parent_comment = models.ForeignKey(
