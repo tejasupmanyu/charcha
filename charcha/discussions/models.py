@@ -282,12 +282,13 @@ class PostsManager(VotableManager):
         # Get the post and all child posts in a single query
         # The first object is the parent post
         # Subsequent objects are child posts, sorted by submission_time in ascending order
-        post_and_child_posts = Post.objects\
+        post_and_child_posts = list(Post.objects\
             .annotate(score=F('upvotes') - F('downvotes'))\
             .select_related("author")\
+            .prefetch_related("teams")\
             .prefetch_related("comments__author")\
             .filter(Q(id = post_id) | Q(parent_post__id = post_id))\
-            .order_by(F('parent_post').desc(nulls_first=True), "submission_time")
+            .order_by(F('parent_post').desc(nulls_first=True), "submission_time"))
         
         parent_post = post_and_child_posts[0]
         child_posts = post_and_child_posts[1:]
