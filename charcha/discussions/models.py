@@ -293,27 +293,7 @@ class PostsManager(VotableManager):
         parent_post = post_and_child_posts[0]
         child_posts = post_and_child_posts[1:]
         parent_post.check_view_permission(user)
-
-        # post_dict = {}
-        # post_ids = []
-        # for post in post_and_child_posts:
-        #     post_ids.append(post.id)
-        #     post_dict[post.id] = post
-        #     post.comments = []
-
-        # # Fetch comments for all parent and child posts
-        # comments = Comment.objects\
-        #     .annotate(score=F('upvotes') - F('downvotes'))\
-        #     .select_related("author")\
-        #     .filter(id_in = post_ids)\
-        #     .order_by("submission_time")
-
-        # # Now associate comment with the corresponding post
-        # for comment in comments:
-        #     # Hopefully, this doesn't trigger another query
-        #     post_id = comment.post.id
-        #     post_dict[post_id].comments.append(comment)
-
+        
         return (parent_post, child_posts)
 
     def get_post_with_my_votes(self, post_id, user):
