@@ -40,16 +40,21 @@ def prepare_html_for_edit(html):
 
 @login_required
 def homepage(request):
-    posts = Post.objects.recent_posts(request.user)
-    return render(request, "home.html", context={"posts": posts, "groups": []})
+    sort_by = request.GET.get('sort_by', 'newactivity')
+    if sort_by not in ('newactivity', 'recentposts'):
+        sort_by = 'newactivity'
+    posts = Post.objects.recent_posts(request.user, sort_by=sort_by)
+    return render(request, "home.html", context={"posts": posts, "groups": [], "selected_sort_by": sort_by})
 
 @login_required
 def group_home(request, group_id):
     group = get_object_or_404_check_acl(Group, requester=request.user, pk=group_id)
-    # group.check_view_permission(request.user)
     # active_members = team.active_team_members()
-    posts = Post.objects.recent_posts(request.user, group=group)
-    return render(request, "home.html", context={"posts": posts, "group": group})
+    sort_by = request.GET.get('sort_by', 'newactivity')
+    if sort_by not in ('newactivity', 'recentposts'):
+        sort_by = 'newactivity'
+    posts = Post.objects.recent_posts(request.user, group=group, sort_by=sort_by)
+    return render(request, "home.html", context={"posts": posts, "group": group, "selected_sort_by": sort_by})
 
 class CommentForm(forms.ModelForm):
     class Meta:

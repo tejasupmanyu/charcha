@@ -6,7 +6,7 @@
 {% block content %}
 {% spaceless %}
 <div class="col-md-8">
-  <div class="border-bottom pb-2 mb-4 d-flex justify-content-between">
+  <div class="border-bottom pb-1 mb-2 d-flex justify-content-between">
     {% if group %}
     <div>
       <h2 class="mb-0">{{ group.name | title }}</h2>
@@ -43,13 +43,30 @@
         </a>
       </div>
     </div>
-    <!-- <div class="align-self-end">
-      <small><a href="/">Manage Team</a></small>
-    </div> -->
     {% else %}
     <div><h2 class="mb-0">All Discussions</h2></div>
     {% endif %}
     
+  </div>
+  <div class="d-flex mb-1">
+    <div class="ml-auto">
+      <span class="mr-1">Sort by:</span>
+      <span class="mr-1">
+        {% if selected_sort_by == 'recentposts' %}
+        Recent Posts
+        {% else %}
+        <a href="{{ request.path }}?sort_by=recentposts">Recent Posts</a>
+        {% endif %}
+      </span>
+      <span class="mr-1">|</span>
+      <span>
+        {% if selected_sort_by == 'newactivity' %}
+        New Activity
+        {% else %}
+        <a href="{{ request.path }}?sort_by=newactivity">New Activity</a>
+        {% endif %}
+      </span>
+    </div>
   </div>
   <div class="post-list">
   {% for post in posts %}
@@ -64,11 +81,15 @@
       <div class="post-title"><a href="{% url 'post' post.id post.slug %}">{{ post.title }}</a></div>
       <small class="post-metadata text-muted">
           by <a href="{% url 'profile' post.author.id %}">{{ post.author }}</a> |
+          {% if not group %}
           <a href="{% url 'group_home' post.group.id %}">{{post.group.name}}</a> |
-          
+          {% endif %}
           {{ post.num_comments }} comment{{ post.num_comments|pluralize }} |
-          {{ post.score }} point{{ post.score | pluralize }} | 
-          {{ post.submission_time | naturalday }}
+          {% if selected_sort_by == 'newactivity' %}
+            updated {{ post.last_modified | naturaltime }}
+          {% else %}
+            created {{ post.submission_time | naturaltime }}
+          {% endif %}
           {% if request.user.is_staff %}
           | <a href="{% url 'admin:discussions_post_change' post.id %}">manage</a>
           {% endif %}

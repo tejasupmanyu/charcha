@@ -1,6 +1,7 @@
 from collections import defaultdict
 import re
 
+from django.utils import timezone
 from django.db.utils import IntegrityError
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
@@ -285,7 +286,7 @@ class PostsManager(models.Manager):
         
         return (parent_post, child_posts)
 
-    def recent_posts(self, user, group=None):
+    def recent_posts(self, user, group=None, sort_by='recentposts'):
         posts = Post.objects.select_related('author').\
             filter(
                 Q(group__members=user) | Q(group__group_type=Group.OPEN), 
@@ -294,7 +295,10 @@ class PostsManager(models.Manager):
         if group:
             posts = posts.filter(group=group)
         
-        posts = posts.order_by("-submission_time")
+        if sort_by == 'recentposts':
+            posts = posts.order_by("-submission_time")
+        else:
+            posts = posts.order_by("-last_modified")
         return posts.all()
 
     def vote_type_to_string(self, vote_type):
@@ -351,6 +355,7 @@ class Post(models.Model):
     slug = models.CharField(max_length=120, blank=True)
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     submission_time = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now=True)
     parent_post = models.ForeignKey(
         'self', 
         null=True,
@@ -378,6 +383,7 @@ class Post(models.Model):
         post.author = author
         post.parent_post = self
         post.group = self.group
+        post.last_modified = timezone.now()
         post.save()
         return post
 
