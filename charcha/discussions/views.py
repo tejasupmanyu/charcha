@@ -8,7 +8,7 @@ from django.http import HttpResponseRedirect, HttpResponseBadRequest, HttpRespon
 from django.views import View 
 from django.views.decorators.http import require_http_methods
 from django import forms
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
@@ -22,10 +22,16 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import DefaultStorage
 from django.core.exceptions import PermissionDenied
 
-from .models import UPVOTE, DOWNVOTE, FLAG
-from .models import Post, Comment, Vote, User, PostWithCustomGet, CommentWithCustomGet
+from .models import Post, Comment, Reaction, User, Group
 from .models import update_gchat_space
-from charcha.teams.models import Team
+
+
+def get_object_or_404_check_acl(klass, requester, *args, **kwargs):
+    'Similar to get_object_or_404, but checks that the user has access to the object that is requested'
+    try:
+        return klass.objects.for_user(requester).get(*args, **kwargs)
+    except klass.DoesNotExist as e:
+        raise Http404('No %s matches the given query.' % klass._meta.object_name)
 
 regex = re.compile(r"<h[1-6]>([^<^>]+)</h[1-6]>")
 def prepare_html_for_edit(html):
@@ -34,17 +40,16 @@ def prepare_html_for_edit(html):
 
 @login_required
 def homepage(request):
-    posts = Post.objects.recent_posts_with_my_votes(request.user)
-    teams = Team.objects.my_teams(request.user)
-    return render(request, "home.html", context={"posts": posts, "teams": teams})
+    posts = Post.objects.recent_posts(request.user)
+    return render(request, "home.html", context={"posts": posts, "groups": []})
 
 @login_required
-def team_home(request, team_id):
-    team = get_object_or_404(Team, pk=team_id)
-    team.check_view_permission(request.user)
-    active_members = team.active_team_members()
-    posts = Post.objects.posts_in_team_with_my_votes(request.user, team=team)
-    return render(request, "home.html", context={"posts": posts, "team": team, "active_members": active_members})
+def group_home(request, group_id):
+    group = get_object_or_404_check_acl(Group, requester=request.user, pk=group_id)
+    # group.check_view_permission(request.user)
+    # active_members = team.active_team_members()
+    posts = Post.objects.recent_posts(request.user, group=group)
+    return render(request, "home.html", context={"posts": posts, "group": group})
 
 class CommentForm(forms.ModelForm):
     class Meta:
@@ -81,14 +86,14 @@ class PostView(LoginRequiredMixin, View):
 
 class ReplyToComment(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
-        parent_comment = get_object_or_404(CommentWithCustomGet, pk=kwargs['id'], requester=request.user)
+        parent_comment = get_object_or_404_check_acl(Comment, pk=kwargs['id'], requester=request.user)
         post = parent_comment.post
         form = CommentForm()
         context = {"post": post, "parent_comment": parent_comment, "form": form}
         return render(request, "reply-to-comment.html", context=context)
 
     def post(self, request, **kwargs):
-        parent_comment = get_object_or_404(CommentWithCustomGet, pk=kwargs['id'], requester=request.user)
+        parent_comment = get_object_or_404_check_acl(Comment, pk=kwargs['id'], requester=request.user)
         form = CommentForm(request.POST)
 
         if not form.is_valid():
@@ -102,14 +107,14 @@ class ReplyToComment(LoginRequiredMixin, View):
 
 class EditComment(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
-        comment = get_object_or_404(CommentWithCustomGet, pk=kwargs['id'], requester=request.user)
+        comment = get_object_or_404_check_acl(Comment, pk=kwargs['id'], requester=request.user)
         comment.html = prepare_html_for_edit(comment.html)
         form = CommentForm(instance=comment)
         context = {"form": form}
         return render(request, "edit-comment.html", context=context)
 
     def post(self, request, **kwargs):
-        comment = get_object_or_404(CommentWithCustomGet, pk=kwargs['id'], requester=request.user)
+        comment = get_object_or_404_check_acl(Comment, pk=kwargs['id'], requester=request.user)
         form = CommentForm(request.POST, instance=comment)
 
         if not form.is_valid():
@@ -152,9 +157,17 @@ class NewPostForm(forms.ModelForm):
         return cleaned_data
 
 class NewPostView(LoginRequiredMixin, View):
-    def get(self, request, team_id, post_type):
-        team = Team.objects.get(id=team_id)
-        team.check_view_permission(request.user)
+    def get(self, request, post_type, group_id=None, parent_post_id = None):
+        if parent_post_id:
+            parent_post = Post.objects.for_user(request.user).select_related('group').get(pk=parent_post_id)
+            group = parent_post.group
+        elif group_id:
+            group = Group.objects.for_user(request.user)\
+                .get(pk=group_id)
+            parent_post = None
+        else:
+            raise Exception("group_id and parent_post_id are both None, at least 1 must be provided")
+        
         post_type_id = Post.get_post_type(post_type)
 
         if post_type == "discussion":
@@ -165,20 +178,49 @@ class NewPostView(LoginRequiredMixin, View):
             post_type_for_display = "Request Feedback"
         elif post_type == "announcement":
             post_type_for_display = "New Announcment"
+        elif post_type == "response":
+            post_type_for_display = "Post a Response"
+        elif post_type == "answer":
+            post_type_for_display = "Post an Answer"
         else:
             raise Exception("Invalid Post Type")
         form = NewPostForm()
-        return render(request, "new-post.html", context={"form": form, "post_type_for_display": post_type_for_display})
+        return render(request, "new-post.html", 
+            context={
+                "form": form, 
+                "post_type_for_display": post_type_for_display, 
+                "parent_post": parent_post, 
+                "group": group
+            }
+        )
 
-    def post(self, request, team_id, post_type):
-        team = Team.objects.get(id=team_id)
-        team.check_view_permission(request.user)
+    def post(self, request, post_type, group_id=None, parent_post_id = None):
+        if parent_post_id:
+            parent_post = Post.objects\
+                .for_user(request.user)\
+                .select_related('group')\
+                .get(pk=parent_post_id)
+            group = parent_post.group
+        elif group_id:
+            group = Group.objects.for_user(request.user)\
+                .get(pk=group_id)
+            parent_post = None
+        else:
+            raise Exception("group_id and parent_post_id are both None, at least 1 must be provided")
+
         form = NewPostForm(request.POST)
         if form.is_valid():
             post = form.save(commit=False)
             post.post_type = Post.get_post_type(post_type)
-            post = Post.objects.new_post(request.user, post, [team])
-            new_post_url = reverse('post', args=[post.id, post.slug])
+
+            if parent_post:
+                post = parent_post.new_child_post(request.user, post)
+                new_post_url = reverse('post', args=[parent_post.id, parent_post.slug]) + "#post-" + str(post.id)
+            elif group:
+                post = group.new_post(request.user, post)
+                new_post_url = reverse('post', args=[post.id, post.slug])
+            else:
+                raise Exception("One of parent_post or group should be non-None")
             return HttpResponseRedirect(new_post_url)
         else:
             return render(request, "new-post.html", context={"form": form})
@@ -189,16 +231,25 @@ class EditPostForm(NewPostForm):
         fields = ['title', 'html']
         widgets = {'html': forms.HiddenInput()}
 
+class EditChildPostForm(EditPostForm):
+    class Meta:
+        model = Post
+        fields = ['html']
+        widgets = {'html': forms.HiddenInput()}
+
 class EditPostView(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
-        post = get_object_or_404(PostWithCustomGet, pk=kwargs['post_id'], requester=request.user)
+        post = get_object_or_404_check_acl(Post, pk=kwargs['post_id'], requester=request.user)
         post.html = prepare_html_for_edit(post.html)
-        form = EditPostForm(instance=post)
+        if post.parent_post:
+            form = EditChildPostForm(instance=post)
+        else:
+            form = EditPostForm(instance=post)    
         context = {"form": form}
         return render(request, "edit-post.html", context=context)
 
     def post(self, request, **kwargs):
-        post = get_object_or_404(PostWithCustomGet, pk=kwargs['post_id'], requester=request.user)
+        post = get_object_or_404_check_acl(Post, pk=kwargs['post_id'], requester=request.user)
         form = EditPostForm(request.POST, instance=post)
 
         if not form.is_valid():
@@ -206,13 +257,18 @@ class EditPostView(LoginRequiredMixin, View):
             return render(request, "edit-post.html", context=context)
         else:
             post.edit_post(form.cleaned_data['title'], form.cleaned_data['html'], request.user)
-        post_url = reverse('post', args=[post.id, post.slug])
+        
+        if post.parent_post:
+            parent_post_url = reverse('post', args=[post.parent_post.id, post.parent_post.slug])
+            post_url = parent_post_url + "#post-" + str(post.id)
+        else:
+            post_url = reverse('post', args=[post.id, post.slug])
         return HttpResponseRedirect(post_url)
 
 @login_required
 @require_http_methods(['POST'])
 def upvote_post(request, post_id):
-    post = get_object_or_404(PostWithCustomGet, pk=post_id, requester=request.user)
+    post = get_object_or_404_check_acl(Post, pk=post_id, requester=request.user)
     post.upvote(request.user)
     post.refresh_from_db()
     return HttpResponse(post.upvotes)
@@ -220,7 +276,7 @@ def upvote_post(request, post_id):
 @login_required
 @require_http_methods(['POST'])
 def downvote_post(request, post_id):
-    post = get_object_or_404(PostWithCustomGet, pk=post_id, requester=request.user)
+    post = get_object_or_404_check_acl(Post, pk=post_id, requester=request.user)
     post.downvote(request.user)
     post.refresh_from_db()
     return HttpResponse(post.downvotes)
@@ -228,7 +284,7 @@ def downvote_post(request, post_id):
 @login_required
 @require_http_methods(['POST'])
 def upvote_comment(request, comment_id):
-    comment = get_object_or_404(CommentWithCustomGet, pk=comment_id, requester=request.user)
+    comment = get_object_or_404_check_acl(Comment, pk=comment_id, requester=request.user)
     comment.upvote(request.user)
     comment.refresh_from_db()
     return HttpResponse(comment.upvotes)
@@ -236,7 +292,7 @@ def upvote_comment(request, comment_id):
 @login_required
 @require_http_methods(['POST'])
 def downvote_comment(request, comment_id):
-    comment = get_object_or_404(CommentWithCustomGet, pk=comment_id, requester=request.user)
+    comment = get_object_or_404_check_acl(Comment, pk=comment_id, requester=request.user)
     comment.downvote(request.user)
     comment.refresh_from_db()
     return HttpResponse(comment.downvotes)
@@ -247,7 +303,7 @@ def myprofile(request):
 
 @login_required
 def profile(request, userid):
-    user = get_object_or_404(User, id=userid)
+    user = get_object_or_404_check_acl(User, pk=userid, requester=request.user)
     return render(request, "profile.html", context={"user": user })
 
 class FileUploadView(LoginRequiredMixin, View):

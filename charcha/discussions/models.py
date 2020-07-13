@@ -1,7 +1,9 @@
 from collections import defaultdict
+import re
 
 from django.db.utils import IntegrityError
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
@@ -11,7 +13,6 @@ from django.db.models import F
 from django.db.models import Q
 from django.urls import reverse
 from charcha.teams.bot import notify_space
-from charcha.teams.models import Team
 from bleach.sanitizer import Cleaner
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -50,10 +51,6 @@ def clean_and_normalize_html(html):
 # TODO: Read this from settings 
 SERVER_URL = "https://charcha.hashedin.com"
 
-UPVOTE = 1
-DOWNVOTE = 2
-FLAG = 3
-
 def save_avatar(backend, strategy, details, response, user=None, *args, **kwargs):
     'Called as part of social authentication login process'
     if backend.name == 'google-oauth2':
@@ -89,7 +86,6 @@ def associate_gchat_user(backend, strategy, details, response, user=None, *args,
             # In such a case, we simply don't update the database, but let the user login
             pass
 
-
 def update_gchat_space(email, space_id):
     try:
         user = User.objects.get(email=email)
@@ -98,14 +94,6 @@ def update_gchat_space(email, space_id):
         return True
     except User.DoesNotExist as e:
         return False
-
-class PostWithCustomGet:
-    def get(*args, **kwargs):
-        return Post.objects.get(*args, **kwargs)
-
-class CommentWithCustomGet:
-    def get(*args, **kwargs):
-        return Comment.objects.get(*args, **kwargs)
 
 class User(AbstractUser):
     """Our custom user model with a score"""
@@ -118,53 +106,280 @@ class User(AbstractUser):
     # If the user has added charcha bot, then this field stores the unique space id
     gchat_space = models.CharField(max_length=50, default=None, null=True)
 
+class GchatUser(models.Model):
+    '''
+    A user imported from google chat
+    
+    Where possible, the gchat user is associated to a charcha user. 
+    Ideally, google chat users should be the same as charcha users, but there are some challenges
 
-class Vote(models.Model):
+    1. Google Hangouts API does not expose email, it only provides a display name. 
+        So we have to use the display name to try and match to users within Charcha
+        This matching is obviously not fool-proof. 
+    2. Google Hangouts only exposes current employees. Charcha may have users that are no longer employees.
+        In this case, ideally we should deactivate the corresponding charcha user, if possible.
+    3. Charcha can create users using django's password based authentication. 
+        These users were allowed in the past, but no are longer supported.
+        Another use case is charcha admin users - which are not necessarily gchat users
+    
+    So charcha users and gchat users are two sets, with a significant overlap - 
+    but they are not subsets of each other
+
+    The important thing is to map the users wherever possible. 
+    The teams functionality depends on this mapping being accurate
+    '''
     class Meta:
-        db_table = "votes"
-        index_together = [
-            ["content_type", "object_id"],
+        db_table = "gchat_users"
+        indexes = [
+            models.Index(fields=["key",]),
         ]
+        constraints = [
+            models.UniqueConstraint(fields=['key',], name="gchat_user_unique_key")
+        ]
+    
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, default=None, related_name="gchat_user")
+    # Maps to name in google hangout's model
+    # See https://developers.google.com/hangouts/chat/reference/rest/v1/User
+    key = models.CharField(max_length=100)
+    display_name = models.CharField(max_length=100)
 
-    # The following 3 fields represent the Comment or Post
-    # on which a vote has been cast
-    # See Generic Relations in Django's documentation
-    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-    voter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    type_of_vote = models.IntegerField(
-        choices = (
-            (UPVOTE, 'Upvote'),
-            (DOWNVOTE, 'Downvote'),
-            (FLAG, 'Flag'),
-        ))
-    submission_time = models.DateTimeField(auto_now_add=True)
-
-class VotableManager(models.Manager):
-    def get(self, *args, **kwargs):
-        if 'requester' not in kwargs:
-            raise PermissionDenied("requester not provided")
-        requester = kwargs.pop('requester')
-        obj = super().get(*args, **kwargs)
-        obj.check_view_permission(requester)
-        return obj
-
-class Votable(models.Model):
-    """ An object on which people would want to vote
-        Post and Comment are concrete classes
-    """
+class GchatSpace(models.Model):
     class Meta:
-        abstract = True
+        db_table = "gchat_spaces"
+    name = models.CharField(max_length=100)
+    space = models.CharField(max_length=50)
 
-    votes = GenericRelation(Vote)
+    def __str__(self):
+        return self.name
+
+class GroupsManager(models.Manager):
+    def for_user(self, user):
+        return Group.objects.filter(Q(members=user) | Q(group_type=Group.OPEN))
+
+class Group(models.Model):
+    OPEN = 0
+    CLOSED = 1
+    SECRET = 2
+
+    class Meta:
+        db_table = "groups"
+    
+    objects = GroupsManager()
+    name = models.CharField(max_length=30, help_text="Name of the group")
+    group_type = models.IntegerField(
+        choices = (
+            (OPEN, 'Open'),
+            (CLOSED, 'Closed'),
+            (SECRET, 'Secret'),
+        ),
+        help_text="Closed groups can be seen on the listing page and request an invitation, but only members can see the posts. Secret groups don't show up on the listing page.")
+    is_deleted = models.BooleanField(default=False)
+    purpose = models.CharField(max_length=200, help_text="A 1 or 2 sentence explaining the purpose of this group")
+    description = models.TextField(max_length=4096, help_text="A larger description that can contain links, charter or any other text to better describe the group")
+    members = models.ManyToManyField(User, verbose_name="Members of this group", through='GroupMember', related_name="mygroups", help_text="Members of this group")
+    gchat_spaces = models.ManyToManyField(GchatSpace, verbose_name="Google chat rooms associated with this group", through='GroupGchatSpace', help_text="Associate this group to one or more gchat rooms. This has two purposes - 1) to automatically import members from the gchat room, and 2) to notify the gchat room when a new post is added")
+    emails = ArrayField(models.EmailField(), size=8, help_text="Mailing list address for this group")
+
+    @classmethod
+    def get(klass, id, user):
+        # Alternative get method to ensure user only sees Posts they have access to
+        return klass.objects.get(Q(members=user) | Q(group_type=Group.OPEN), pk=id)
+
+    def _slugify(self, title):
+        slug = title.lower()
+        slug = re.sub("[^0-9a-zA-Z-]+", " ", slug)
+        slug = slug.strip()
+        slug = re.sub("\s+", "-", slug)
+        return slug
+
+    def new_post(self, author, post):
+        post.author = author
+        post.slug = self._slugify(post.title)
+        post.group = self
+        post.save()
+        self._on_new_post(post)
+        return post
+
+    def _on_new_post(self, post):
+        event = {
+            "heading": "New Discussion",
+            "sub_heading": "by " + post.author.username,
+            "image": post.author.avatar,
+            "line1": post.title,
+            "line2": post.html[:150],
+            "link": SERVER_URL + reverse("post", args=[post.id, post.slug]),
+            "link_title": "View Discussion"
+        }
+        for gchat_space in self.gchat_spaces.all():
+            space_id = gchat_space.space
+            notify_space(space_id, event)
+
+    def __str__(self):
+        return self.name
+    
+class GroupGchatSpace(models.Model):
+    class Meta:
+        db_table = "group_gchat_spaces"
+        verbose_name = "Chat Room"
+    
+    group = models.ForeignKey(Group, on_delete=models.PROTECT)
+    gchat_space = models.ForeignKey(GchatSpace, verbose_name="Room Name", on_delete=models.PROTECT)
+    notify = models.BooleanField(default=True, help_text="Notify the chat room whenever a new post is created in this charcha group")
+    sync_members = models.BooleanField(default=True, help_text="Automatically sync chat room members with this charcha group")
+    
+class Role(models.Model):
+    'Roles are - administrator, moderator, member, guest'
+    class Meta:
+        db_table = "roles"
+    name = models.CharField(max_length=20)
+    permissions = models.ManyToManyField('Permission', through='RolePermission', related_name="roles")
+    
+    def permissons_csv(self):
+        'Only for display purposes in django admin'
+        return ", ".join([p.name for p in self.permissions.all()])
+
+    def __str__(self):
+        return self.name
+
+class Permission(models.Model):
+    class Meta:
+        db_table = 'permissions'
+    name = models.CharField(max_length=20)
+    description = models.CharField(max_length=200)
+
+    def __str__(self):
+        return self.name
+
+class RolePermission(models.Model):
+    class Meta:
+        db_table = "role_permissions"
+    role = models.ForeignKey(Role, on_delete=models.PROTECT)
+    permission = models.ForeignKey(Permission, on_delete=models.PROTECT)
+
+class GroupMember(models.Model):
+    class Meta:
+        db_table = 'group_members'
+    group = models.ForeignKey(Group, on_delete=models.PROTECT)
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
+    role = models.ForeignKey(Role, on_delete=models.PROTECT)
+
+class PostsManager(models.Manager):
+    def for_user(self, user):
+        return Post.objects.filter(Q(group__members=user) | Q(group__group_type=Group.OPEN))
+
+    def get_post_details(self, post_id, user):
+        # Get the post and all child posts in a single query
+        # The first object is the parent post
+        # Subsequent objects are child posts, sorted by submission_time in ascending order
+        post_and_child_posts = list(Post.objects\
+            .select_related("author")\
+            .select_related("group")\
+            .prefetch_related("comments__author")\
+            .filter(
+                Q(id = post_id) | Q(parent_post__id = post_id)
+            )\
+            .order_by(F('parent_post').desc(nulls_first=True), "submission_time"))
+        
+        parent_post = post_and_child_posts[0]
+        child_posts = post_and_child_posts[1:]
+        
+        return (parent_post, child_posts)
+
+    def recent_posts(self, user, group=None):
+        posts = Post.objects.select_related('author').\
+            filter(
+                Q(group__members=user) | Q(group__group_type=Group.OPEN), 
+                parent_post=None
+            )
+        if group:
+            posts = posts.filter(group=group)
+        
+        posts = posts.order_by("-submission_time")
+        return posts.all()
+
+    def vote_type_to_string(self, vote_type):
+        mapping = {
+            UPVOTE: "upvote",
+            DOWNVOTE: "downvote",
+            FLAG: "flag"
+        }
+        return mapping[vote_type]
+
+class Post(models.Model):
+    DISCUSSION = 0
+    QUESTION = 1
+    FEEDBACK = 2
+    ANNOUNCEMENT = 3
+    RESPONSE = 16
+    ANSWER = 17
+    _POST_TYPES = {
+        "discussion": DISCUSSION,
+        "announcement": ANNOUNCEMENT,
+        "question": QUESTION,
+        "feedback": FEEDBACK,
+        "response": RESPONSE,
+        "answer": ANSWER
+    }
+    
+    @staticmethod
+    def get_top_level_post_types():
+        return [POST.DISCUSSION, Post.QUESTION, Post.FEEDBACK, Post.ANNOUNCEMENT]
+
+    @staticmethod
+    def get_post_type(post_type_str):
+        post_type = Post._POST_TYPES.get(post_type_str.lower(), None)
+        if post_type is None:
+            raise Exception("Invalid Post Type - " + str(post_type_str))
+        return post_type
+
+    @property
+    def post_type_for_display(self):
+        for post_type, _id in Post._POST_TYPES.items():
+            if self.post_type == _id:
+                return post_type
+        return None
+
+    class Meta:
+        db_table = "posts"
+        index_together = [
+            ["submission_time",],
+        ]
+    
+    objects = PostsManager()
+    group = models.ForeignKey(Group, on_delete=models.PROTECT)
+    title = models.CharField(max_length=120, blank=True)
+    slug = models.CharField(max_length=120, blank=True)
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    submission_time = models.DateTimeField(auto_now_add=True)
+    parent_post = models.ForeignKey(
+        'self', 
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT, default=None)
+    post_type = models.IntegerField(
+        choices = (
+            (DISCUSSION, 'Discussion'),
+            (QUESTION, 'Question'),
+            (FEEDBACK, 'Feedback'),
+            (ANNOUNCEMENT, 'Announcement'),
+            (RESPONSE, 'Response'),
+            (ANSWER, 'Answer'),
+        ),
+        default=DISCUSSION)
+    html = models.TextField(blank=True, max_length=8192)
+    is_deleted = models.BooleanField(default=False)
+    sticky = models.BooleanField(default=False)
+    accepted_answer = models.BooleanField(default=False)
+    resolved = models.BooleanField(default=False)
+    num_comments = models.IntegerField(default=0)
+    score = models.IntegerField(default=0)
 
-    # denormalization to save database queries
-    # flags = count of votes of type "Flag"
-    upvotes = models.IntegerField(default=0)
-    downvotes = models.IntegerField(default=0)
-    flags = models.IntegerField(default=0)
+    def new_child_post(self, author, post):
+        post.author = author
+        post.parent_post = self
+        post.group = self.group
+        post.save()
+        return post
 
     def upvote(self, user):
         self.check_view_permission(user)
@@ -173,14 +388,6 @@ class Votable(models.Model):
     def downvote(self, user):
         self.check_view_permission(user)
         self._vote(user, DOWNVOTE)
-
-    def flag(self, user):
-        self.check_view_permission(user)
-        self._vote(user, FLAG)
-
-    def unflag(self, user):
-        self.check_view_permission(user)
-        raise Exception("not yet implemented")
 
     def _undo_vote(self, user):
         self.check_view_permission(user)
@@ -222,7 +429,6 @@ class Votable(models.Model):
                     voter=user,
                     type_of_vote=type_of_vote)
         vote.save()
-
         score_delta = 0
         # Next, update our denormalized columns
         if type_of_vote == FLAG:
@@ -251,262 +457,6 @@ class Votable(models.Model):
             voter=user, type_of_vote=type_of_vote)\
             .exists()
 
-class TeamPosts(models.Model):
-    'Through model to maintain many-to-many relationship between Post and Team'
-    class Meta:
-        db_table = "team_posts"
-        indexes = [
-            models.Index(fields=["team", "post"]),
-            models.Index(fields=["post", "team"]),
-        ]
-        constraints = [
-            models.UniqueConstraint(fields=['team', 'post',], name="team_posts_unique_constraint")
-        ]    
-    team = models.ForeignKey(Team, on_delete=models.PROTECT)
-    post = models.ForeignKey('Post', on_delete=models.PROTECT)
-
-class PostsManager(VotableManager):
-    def new_post(self, author, post, teams):
-        if not Team.objects.belongs_to_all_teams(author, teams):
-            raise PermissionDenied("User " + str(author.id)  + " does not have access to one or more teams \
-                under which this post is being created")
-
-        post.author = author
-        post.save()
-        for team in teams:
-            TeamPosts(post=post, team=team).save()
-        post.on_new_post()
-        return post
-
-    def get_post_details(self, post_id, user):
-        # Get the post and all child posts in a single query
-        # The first object is the parent post
-        # Subsequent objects are child posts, sorted by submission_time in ascending order
-        post_and_child_posts = list(Post.objects\
-            .annotate(score=F('upvotes') - F('downvotes'))\
-            .select_related("author")\
-            .prefetch_related("teams")\
-            .prefetch_related("comments__author")\
-            .filter(Q(id = post_id) | Q(parent_post__id = post_id))\
-            .order_by(F('parent_post').desc(nulls_first=True), "submission_time"))
-        
-        parent_post = post_and_child_posts[0]
-        child_posts = post_and_child_posts[1:]
-        parent_post.check_view_permission(user)
-        
-        return (parent_post, child_posts)
-
-    def get_post_with_my_votes(self, post_id, user):
-        post = Post.objects\
-            .annotate(score=F('upvotes') - F('downvotes'))\
-            .select_related("author").get(pk=post_id)
-        post.check_view_permission(user)
-
-        if user and user.is_authenticated:
-            content_type = ContentType.objects.get_for_model(Post)
-            post_votes = Vote.objects.filter(
-                content_type=content_type.id,
-                object_id=post_id, type_of_vote__in=(UPVOTE, DOWNVOTE),
-                voter=user)
-
-            for v in post_votes:
-                if v.type_of_vote == UPVOTE:
-                    post.is_upvoted = True
-                elif v.type_of_vote == DOWNVOTE:
-                    post.is_downvoted = True
-        return post
-
-    def posts_in_team_with_my_votes(self, user, team):
-        posts = Post.objects.raw("""
-            SELECT p.id, p.title, 
-                p.upvotes, p.downvotes, p.flags,
-                (p.upvotes - p.downvotes) as score, 
-                p.title, p.html, p.submission_time, p.num_comments, 
-                json_build_object('id', a.id, 'username', a.username, 'avatar', a.avatar) as _author
-            FROM posts p JOIN users a on p.author_id = a.id
-            WHERE EXISTS (
-                SELECT 'x' FROM team_posts tp JOIN team_members tm ON tp.team_id = tm.team_id
-                WHERE tm.gchat_user_id = (select g.id from gchat_users g where g.user_id = %s) 
-                and tp.post_id = p.id and tp.team_id = %s
-            )
-            ORDER BY p.submission_time DESC
-            LIMIT 100;
-        """, [user.id, team.id])
-
-        # Our query returns author and team objects as dictionary
-        # But Django expects them to proper User and Team objects
-        # So we do the conversion over here 
-        for p in posts:
-            p.author = User(**p._author)
-            
-        posts = self._append_votes_by_user(posts, user)
-        return posts
-
-    def recent_posts_with_my_votes(self, user):
-        posts = Post.objects.raw("""
-            WITH post_teams as (
-                SELECT tp.post_id as post_id, json_agg(t.*) as teams
-                FROM team_posts tp JOIN (SELECT id, name FROM teams) t on tp.team_id = t.id
-                GROUP BY tp.post_id
-            )
-            SELECT p.id, p.title, 
-                p.upvotes, p.downvotes, p.flags,
-                (p.upvotes - p.downvotes) as score, 
-                p.title, p.html, p.submission_time, p.num_comments, 
-                json_build_object('id', a.id, 'username', a.username, 'avatar', a.avatar) as _author,
-                pt.teams as teamsobj
-            FROM posts p JOIN users a on p.author_id = a.id
-                JOIN post_teams pt on p.id = pt.post_id
-            WHERE EXISTS (
-                SELECT 'x' FROM team_posts tp JOIN team_members tm ON tp.team_id = tm.team_id
-                WHERE tm.gchat_user_id = (select g.id from gchat_users g where g.user_id = %s) 
-                and tp.post_id = p.id
-            )
-            ORDER BY p.submission_time DESC
-            LIMIT 100;
-        """, [user.id])
-
-        # Our query returns author and team objects as dictionary
-        # But Django expects them to proper User and Team objects
-        # So we do the conversion over here 
-        for p in posts:
-            p.author = User(**p._author)
-            
-        posts = self._append_votes_by_user(posts, user)
-        return posts
-
-    def _append_votes_by_user(self, posts, user):
-        # Returns a dictionary
-        # key = postid
-        # value = set of votes cast by this user
-        # for example set('downvote', 'flag')
-        post_ids = [p.id for p in posts]
-        post_type = ContentType.objects.get_for_model(Post)
-        objects = Vote.objects.\
-                    only('object_id', 'type_of_vote').\
-                    filter(content_type=post_type.id,
-                        object_id__in=post_ids,
-                        voter=user)
-
-        votes_by_post = defaultdict(set)
-        for obj in objects:
-            votes_by_post[obj.object_id].add(obj.type_of_vote)
-
-        for post in posts:
-            post.is_upvoted = False
-            post.is_downvoted = False
-            if UPVOTE in votes_by_post[post.id]:
-                post.is_upvoted = True
-            elif DOWNVOTE in votes_by_post[post.id]:
-                post.is_downvoted = True
-            elif FLAG in votes_by_post[post.id]:
-                post.is_flagged = True
-            
-        return posts
-
-    def vote_type_to_string(self, vote_type):
-        mapping = {
-            UPVOTE: "upvote",
-            DOWNVOTE: "downvote",
-            FLAG: "flag"
-        }
-        return mapping[vote_type]
-
-class Post(Votable):
-    DISCUSSION = 0
-    QUESTION = 1
-    FEEDBACK = 2
-    ANNOUNCEMENT = 3
-    RESPONSE = 16
-    ANSWER = 17
-    _POST_TYPES = {
-        "discussion": DISCUSSION,
-        "announcement": ANNOUNCEMENT,
-        "question": QUESTION,
-        "feedback": FEEDBACK,
-        "response": RESPONSE,
-        "answer": ANSWER
-    }
-    
-    @staticmethod
-    def get_top_level_post_types():
-        return [POST.DISCUSSION, Post.QUESTION, Post.FEEDBACK, Post.ANNOUNCEMENT]
-
-    @staticmethod
-    def get_post_type(post_type_str):
-        post_type = Post._POST_TYPES.get(post_type_str.lower(), None)
-        if post_type is None:
-            raise Exception("Invalid Post Type - " + str(post_type_str))
-        return post_type
-
-    @property
-    def post_type_for_display(self):
-        for post_type, _id in Post._POST_TYPES.items():
-            if self.post_type == _id:
-                return post_type
-        return None
-
-    class Meta:
-        db_table = "posts"
-        index_together = [
-            ["submission_time",],
-        ]
-    
-    objects = PostsManager()
-    parent_post = models.ForeignKey(
-        'self', 
-        null=True,
-        on_delete=models.PROTECT, default=None)
-    post_type = models.IntegerField(
-        choices = (
-            (DISCUSSION, 'Discussion'),
-            (QUESTION, 'Question'),
-            (FEEDBACK, 'Feedback'),
-            (ANNOUNCEMENT, 'Announcement'),
-            (RESPONSE, 'Response'),
-            (ANSWER, 'Answer'),
-        ),
-        default=DISCUSSION)
-
-    title = models.CharField(max_length=120, null=True)
-    slug = models.CharField(max_length=120)
-    html = models.TextField(blank=True, max_length=8192)
-    submission_time = models.DateTimeField(auto_now_add=True)
-    teams = models.ManyToManyField(Team, through=TeamPosts, related_name="posts")
-    sticky = models.BooleanField(default=False)
-    accepted_answer = models.BooleanField(default=False)
-    resolved = models.BooleanField(default=False)
-    num_comments = models.IntegerField(default=0)
-    temp_comment_id = models.IntegerField(default=0)
-
-    def can_view(self, user):
-        'User can view the post if he belongs to any team(s) the post is a part of'
-        result = Post.objects.raw("""
-            SELECT p.id FROM posts p
-            WHERE EXISTS (
-                SELECT 'x' FROM team_posts tp JOIN team_members tm on tp.team_id = tm.team_id
-                    WHERE tp.post_id = p.id AND tm.gchat_user_id = (
-                        SELECT id from gchat_users where user_id = %s
-                    )
-            )
-            AND p.id = %s;
-        """, [user.id, self.id])
-        if result:
-            return True
-        else:
-            return False
-
-    def can_edit(self, user):
-        return self.author.id == user.id
-    
-    def check_view_permission(self, user):
-        if not self.can_view(user):
-            raise PermissionDenied("View denied on post " + str(self.id) + " to user " + str(user.id))
-    
-    def check_edit_permission(self, user):
-        if not self.can_edit(user):
-            raise PermissionDenied("Edit denied on post " + str(self.id) + " to user " + str(user.id))
-
     def save(self, *args, **kwargs):
         self.html = clean_and_normalize_html(self.html)
         is_create = False
@@ -518,14 +468,11 @@ class Post(Votable):
         return "/discuss/%i/" % self.id
 
     def edit_post(self, title, html, author):
-        self.check_edit_permission(author)
         self.title = title
         self.html = html
         self.save()
 
     def add_comment(self, html, author):
-        # You can add a comment as long as you have view permission on the post
-        self.check_view_permission(author)
         comment = Comment()
         comment.html = html
         comment.post = self
@@ -560,20 +507,6 @@ class Post(Votable):
                 AND pp.postid = %s
             """, [post_type.id, self.id])
 
-    def on_new_post(self):
-        event = {
-            "heading": "New Discussion",
-            "sub_heading": "by " + self.author.username,
-            "image": self.author.avatar,
-            "line1": self.title,
-            "line2": self.html[:150],
-            "link": SERVER_URL + reverse("discussion", args=[self.id]),
-            "link_title": "View Discussion"
-        }
-        for team in self.teams.all():
-            space_id = team.gchat_space
-            notify_space(space_id, event)
-
     def __str__(self):
         if self.title:
             return self.title
@@ -582,7 +515,36 @@ class Post(Votable):
         else:
             return "Post id = " + str(self.id)
 
-class CommentsManager(VotableManager):
+class Reaction(models.Model):
+    class Meta:
+        db_table = "reactions"
+        index_together = [
+            ["post", "author"],
+        ]
+
+    post = models.ForeignKey(Post, on_delete=models.PROTECT, related_name='reactions')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    # A reaction is a unicode emoji
+    reaction = models.CharField(max_length=1)
+    submission_time = models.DateTimeField(auto_now_add=True)
+
+class PostMembers(models.Model):
+    'Only in case you want to share a post with someone who is a guest in the group'
+    class Meta:
+        db_table = "post_members"
+    
+    post = models.ForeignKey(Group, on_delete=models.PROTECT)
+    member = models.ForeignKey(User, on_delete=models.PROTECT)
+
+class CommentsManager(models.Manager):
+    def get(self, *args, **kwargs):
+        if 'requester' not in kwargs:
+            raise PermissionDenied("requester not provided")
+        requester = kwargs.pop('requester')
+        obj = super().get(*args, **kwargs)
+        obj.check_view_permission(requester)
+        return obj
+
     def best_ones_first(self, post, user):
         post.check_view_permission(user)
         comment_type = ContentType.objects.get_for_model(Comment)
@@ -643,60 +605,20 @@ class CommentsManager(VotableManager):
 
             return comments
 
-class Comment(Votable):
+class Comment(models.Model):
     class Meta:
         db_table = "comments"
     
     objects = CommentsManager()
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     post = models.ForeignKey(Post, on_delete=models.PROTECT, related_name="comments")
-    parent_comment = models.ForeignKey(
-        'self', 
-        null=True,
-        on_delete=models.PROTECT)
     html = models.TextField(max_length=8192)
     submission_time = models.DateTimeField(auto_now_add=True)
-
-    # wbs helps us to track the comments as a tree
-    # Format is .0000.0000.0000.0000.0000.0000
-    # This means that:
-    # 1. We only allow 9999 comments at each level
-    # 2. We allow threaded comments upto 12 levels
-    wbs = models.CharField(max_length=60)
-
-    def can_view(self, user):
-        'User can view the comment if he can view the parent post'
-        return self.post.can_view(user)
-
-    def can_edit(self, user):
-        return self.author.id == user.id
-    
-    def check_view_permission(self, user):
-        if not self.can_view(user):
-            raise PermissionDenied("View denied on comment " + str(self.id) + " to user " + str(user.id))
-    
-    def check_edit_permission(self, user):
-        if not self.can_edit(user):
-            raise PermissionDenied("Edit denied on comment " + str(self.id) + " to user " + str(user.id))
+    is_deleted = models.BooleanField(default=False)
     
     def save(self, *args, **kwargs):
         self.html = comment_cleaner.clean(self.html)
         super().save(*args, **kwargs)
-
-    def reply(self, html, author):
-        # You can reply as long as you have view permission on the post
-        self.post.check_view_permission(author)
-        comment = Comment()
-        comment.html = html
-        comment.post = self.post
-        comment.parent_comment = self
-        comment.wbs = _find_next_wbs(self.post, parent_wbs=self.wbs)
-        comment.author = author
-        comment.save()
-
-        comment.post.num_comments = F('num_comments') + 1
-        comment.post.save()
-        comment.on_new_comment()
-        return comment
 
     def edit_comment(self, html, author):
         self.check_edit_permission(author)
@@ -722,46 +644,12 @@ class Comment(Votable):
     def __str__(self):
         return self.html
 
-def _find_next_wbs(post, parent_wbs=None):
-    if not parent_wbs:
-        parent_wbs = ""
-
-    from django.db import connection
-    with connection.cursor() as c:
-        c.execute("""
-            SELECT max(wbs) as wbs from comments 
-            WHERE post_id = %s and wbs like %s
-            and length(wbs) = %s
-            ORDER BY wbs desc
-            limit 1
-            """,
-            [post.id, parent_wbs + ".%", len(parent_wbs) + 5]
-        )
-        try:
-            row = c.fetchone()
-            max_wbs = row[0]
-        except:
-            max_wbs = None
-
-    if not max_wbs:
-        return "%s.%s" % (parent_wbs, "0000")
-    else:
-        first_wbs = max_wbs[:-4]
-        last_wbs = max_wbs.split(".")[-1]
-        next_wbs = int(last_wbs) + 1
-        return first_wbs + '{0:04d}'.format(next_wbs)
-
 class Favourite(models.Model):
     class Meta:
         # Yes, I use Queen's english
         db_table = "favourites"
 
-    # The following 3 fields represent the Comment or Post
-    # which has been favourited
-    # See Generic Relations in Django's documentation
-    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    post = models.ForeignKey(Post, on_delete=models.PROTECT)
     favourited_on = models.DateTimeField(auto_now_add=True)
-    deleted_on = models.DateTimeField(blank=True, null=True)
+    is_deleted = models.BooleanField(default=False)

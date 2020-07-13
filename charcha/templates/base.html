@@ -55,16 +55,13 @@
 </nav>
 <div class="container charcha">
   {% if request.user.is_authenticated %}  
-  <div class="row">
-    <div class="col-md-6">
+  <!-- <div class="row">
+    <div class="col-md-8">
         {% if not request.user.gchat_space %}
         <div class="alert alert-info" role="alert">You haven't added charcha bot yet, and will not receive notifications. <a class="alert-link" href="https://charcha.hashedin.com/discuss/139/">Learn More</a></div>
         {% endif %}
-        {% if not request.user.gchat_user %}
-        <div class="alert alert-danger" role="alert">You are not part of any teams, and cannot participate in Charcha. This is most likely because your email address does not follow the convention of firstname.lastname@hashedin.com. <br/> <br/> Please contact <a  class="alert-link" href="mailto:sripathi.krishnan@hashedin.com">sripathi.krishnan@hashedin.com</a> to resolve this!</div>
-        {% endif %}
     </div>
-  </div>
+  </div> -->
   {% endif %}
   <div class="row">
     {% block content %}{% endblock %}

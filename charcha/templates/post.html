@@ -7,22 +7,24 @@
 {% block content %}
 {% spaceless %}
 <div class="col-md-8">
+  <h1 class="card-title d-flex justify-content-between">
+    <span>{{ post.title }}</span>
+    <div style="width:30px">{% include "partials/post-type-icon.html" with post_type=post.post_type %}</div>
+  </h1>
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="{% url "team_home" post.teams.all.0.id %}">{{ post.teams.all.0 }}</a></li>
-      <li class="breadcrumb-item"><a href="{% url "team_home" post.teams.all.0.id %}">
+      <li class="breadcrumb-item">
+        <a href="{% url "group_home" post.group.id %}">{{ post.group.name | title }}</a>
+      </li>
+      <li class="breadcrumb-item"><a href="{% url "group_home" post.group.id %}">
         {% include "partials/post-type-breadcumb.html" with post_type=post.post_type %} 
       </a></li>
-      <li class="breadcrumb-item active" aria-current="page">{{post.title}}</li>
+      <!-- <li class="breadcrumb-item active" aria-current="page">{{post.title}}</li> -->
     </ol>
   </nav>
-  <div class="card">
+  <div class="card post original-post">
     <div class="card-header">
-      <h2 class="card-title d-flex justify-content-between">
-        <span>{{ post.title }}</span>
-        <div style="width:30px">{% include "partials/post-type-icon.html" with post_type=post.post_type %}</div>
-      </h2>
-      <div class="d-flex text-muted">
+      <div class="d-flex">
         <div>
           {% if post.author.avatar %}
           <img width="40" src="{{post.author.avatar}}" class="rounded-circle mr-3"/>
@@ -32,9 +34,8 @@
         </div>
         <div>
           <a href="{% url 'profile' post.author.id %}">{{ post.author.first_name }} {{ post.author.last_name }}</a>
-          under {% include "partials/teams.html" with teams=post.teams.all %}
         </div>
-        <small class="ml-auto">  
+        <small class="text-muted ml-auto">  
             {{ post.submission_time | naturaltime }}
         </small>
       </div>
@@ -62,8 +63,8 @@
     <div class="separator">&nbsp;</div>
   </div>
   {% for childpost in child_posts %}
-  <div id="post-{{childpost.id}}" class="mb-3 rounded card">
-    <div class="card-header d-flex align-items-center justify-content-between text-muted ">
+  <div id="post-{{childpost.id}}" class="mb-3 rounded card post">
+    <div class="card-header d-flex align-items-start justify-content-between text-muted ">
       <div>
         {% if childpost.author.avatar %}
           <img width="40" src="{{childpost.author.avatar}}" class="rounded-circle mr-3"/>
@@ -148,7 +149,7 @@
   {% endfor %}
 
   <h4 class='my-3'>Your Response:</h4>
-  <form method="post" action="">
+  <form method="post" action="{% url 'new-child-post' post.id 'response' %}">
     {% csrf_token %}
     {{ form | crispy }}
     <trix-editor class="trix-content" input="id_html"></trix-editor>
