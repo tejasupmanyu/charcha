@@ -287,8 +287,10 @@ class PostsManager(models.Manager):
         return (parent_post, child_posts)
 
     def recent_posts(self, user, group=None, sort_by='recentposts'):
-        posts = Post.objects.select_related('author').\
-            filter(
+        posts = Post.objects\
+            .select_related('author')\
+            .select_related('group')\
+            .filter(
                 Q(group__members=user) | Q(group__group_type=Group.OPEN), 
                 parent_post=None
             )
