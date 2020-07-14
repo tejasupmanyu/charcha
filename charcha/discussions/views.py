@@ -1,6 +1,7 @@
 import json
 import re
 import os
+import pytz
 from uuid import uuid4
 
 from django.http import HttpResponse, JsonResponse
@@ -8,7 +9,7 @@ from django.http import HttpResponseRedirect, HttpResponseBadRequest, HttpRespon
 from django.views import View 
 from django.views.decorators.http import require_http_methods
 from django import forms
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
@@ -56,6 +57,14 @@ def group_home(request, group_id):
     posts = Post.objects.recent_posts(request.user, group=group, sort_by=sort_by)
     return render(request, "home.html", context={"posts": posts, "group": group, "selected_sort_by": sort_by})
 
+@login_required
+def set_user_timezone(request):
+    if request.method == 'POST':
+        request.user.tzname = request.POST['timezone']
+        request.user.save()
+    
+    return redirect(reverse('myprofile', args=[]))
+
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
@@ -77,69 +86,43 @@ class PostView(LoginRequiredMixin, View):
         context = {"post": post, "child_posts": child_posts, "form": form}
         return render(request, "post.html", context=context)
 
-    def post(self, request, post_id):
-        post, child_posts = Post.objects.get_post_details(post_id, 
-                    request.user)
-        form = CommentForm(request.POST)
-        if form.is_valid():
-            comment = post.add_comment(form.cleaned_data['html'], request.user)
-            post_url = reverse('post', args=[post.id, post.slug])
-            return HttpResponseRedirect(post_url)
-        else:
-            context = {"post": post, "child_posts": child_posts, "form": form}
-            return render(request, "post.html", context=context)
+class AddEditComment(LoginRequiredMixin, View):
+    def get(self, request, id=None, post_id=None):
+        if post_id:
+            post = Post.objects.for_user(request.user).get(pk=post_id)
+            comment = Comment()
+        elif id:
+            post = None
+            comment = Comment.objects.for_user(request.user).get(pk=id)
 
-class ReplyToComment(LoginRequiredMixin, View):
-    def get(self, request, **kwargs):
-        parent_comment = get_object_or_404_check_acl(Comment, pk=kwargs['id'], requester=request.user)
-        post = parent_comment.post
-        form = CommentForm()
-        context = {"post": post, "parent_comment": parent_comment, "form": form}
-        return render(request, "reply-to-comment.html", context=context)
-
-    def post(self, request, **kwargs):
-        parent_comment = get_object_or_404_check_acl(Comment, pk=kwargs['id'], requester=request.user)
-        form = CommentForm(request.POST)
-
-        if not form.is_valid():
-            post = parent_comment.post
-            context = {"post": post, "parent_comment": parent_comment, "form": form}
-            return render(request, "reply-to-comment.html", context=context)
-
-        comment = parent_comment.reply(form.cleaned_data['html'], request.user)
-        post_url = reverse('post', args=[parent_comment.post.id, parent_comment.post.slug])
-        return HttpResponseRedirect(post_url + "#comment-" + str(parent_comment.id))
-
-class EditComment(LoginRequiredMixin, View):
-    def get(self, request, **kwargs):
-        comment = get_object_or_404_check_acl(Comment, pk=kwargs['id'], requester=request.user)
-        comment.html = prepare_html_for_edit(comment.html)
         form = CommentForm(instance=comment)
-        context = {"form": form}
-        return render(request, "edit-comment.html", context=context)
+        context = {"post": post, "form": form}
+        return render(request, "add-edit-comment.html", context=context)
 
-    def post(self, request, **kwargs):
-        comment = get_object_or_404_check_acl(Comment, pk=kwargs['id'], requester=request.user)
-        form = CommentForm(request.POST, instance=comment)
+    def post(self, request, id=None, post_id=None):
+        if post_id:
+            post = Post.objects.for_user(request.user).get(pk=post_id)
+            comment = Comment()
+        elif id:
+            comment = Comment.objects.for_user(request.user).select_related("post").get(pk=id)
+            post = comment.post
 
+        form = CommentForm(request.POST)
         if not form.is_valid():
-            context = {"form": form}
-            return render(request, "edit-comment.html", context=context)
-        else:
-            comment.edit_comment(form.cleaned_data['html'], request.user)
-        post_url = reverse('post', args=[comment.post.id, comment.post.slug])
-        return HttpResponseRedirect(post_url)
+            context = {"post": post, "form": form}
+            return render(request, "add-edit-comment.html", context=context)
 
-class TeamSelect(forms.SelectMultiple):
-    '''Renders a many-to-many field as a single select dropdown
-        While the backend supports many-to-many relationship,
-        we are not yet ready to expose it to users yet.
-        So we mask the multiple select field into a single select
-    '''
-    def render(self, *args, **kwargs):
-        rendered = super().render(*args, **kwargs)
-        return rendered.replace('multiple>\n', '>\n')
+        if post_id:
+            comment = post.add_comment(form.cleaned_data['html'], request.user)
+        elif id:
+            comment = comment.edit(form.cleaned_data['html'], request.user)
         
+        if post.parent_post:
+            post_url = reverse('post', args=[post.parent_post.id, post.parent_post.slug])
+        else:
+            post_url = reverse('post', args=[post.id, post.slug])
+        return HttpResponseRedirect(post_url + "#comment-" + str(comment.id))
+
 class NewPostForm(forms.ModelForm):
     class Meta:
         model = Post
@@ -304,11 +287,11 @@ def downvote_comment(request, comment_id):
 
 @login_required
 def myprofile(request):
-    return render(request, "profile.html", context={"user": request.user })
+    return render(request, "profile.html", context={"user": request.user, 'timezones': pytz.common_timezones})
 
 @login_required
 def profile(request, userid):
-    user = get_object_or_404_check_acl(User, pk=userid, requester=request.user)
+    user = get_object_or_404(User, pk=userid)
     return render(request, "profile.html", context={"user": user })
 
 class FileUploadView(LoginRequiredMixin, View):

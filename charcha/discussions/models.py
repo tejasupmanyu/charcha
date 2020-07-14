@@ -106,6 +106,7 @@ class User(AbstractUser):
     
     # If the user has added charcha bot, then this field stores the unique space id
     gchat_space = models.CharField(max_length=50, default=None, null=True)
+    tzname = models.CharField(max_length=50, default='Asia/Kolkata')
 
 class GchatUser(models.Model):
     '''
@@ -380,6 +381,7 @@ class Post(models.Model):
     resolved = models.BooleanField(default=False)
     num_comments = models.IntegerField(default=0)
     score = models.IntegerField(default=0)
+    last_seen = models.ManyToManyField(User, through='LastSeenOnPost', related_name='last_seen')
 
     def new_child_post(self, author, post):
         post.author = author
@@ -484,13 +486,11 @@ class Post(models.Model):
         comment = Comment()
         comment.html = html
         comment.post = self
-        comment.wbs = _find_next_wbs(self)
         comment.author = author
         comment.save()
 
         self.num_comments = F('num_comments') + 1
         self.save(update_fields=["num_comments"])
-        comment.on_new_comment()
         return comment
 
     def watchers(self):
@@ -545,13 +545,8 @@ class PostMembers(models.Model):
     member = models.ForeignKey(User, on_delete=models.PROTECT)
 
 class CommentsManager(models.Manager):
-    def get(self, *args, **kwargs):
-        if 'requester' not in kwargs:
-            raise PermissionDenied("requester not provided")
-        requester = kwargs.pop('requester')
-        obj = super().get(*args, **kwargs)
-        obj.check_view_permission(requester)
-        return obj
+    def for_user(self, user):
+        return Comment.objects.filter(Q(post__group__members=user) | Q(post__group__group_type=Group.OPEN))
 
     def best_ones_first(self, post, user):
         post.check_view_permission(user)
@@ -628,10 +623,10 @@ class Comment(models.Model):
         self.html = comment_cleaner.clean(self.html)
         super().save(*args, **kwargs)
 
-    def edit_comment(self, html, author):
-        self.check_edit_permission(author)
+    def edit(self, html, author):
         self.html = html
         self.save()
+        return self
 
     def on_new_comment(self):
         event = {
@@ -661,3 +656,17 @@ class Favourite(models.Model):
     post = models.ForeignKey(Post, on_delete=models.PROTECT)
     favourited_on = models.DateTimeField(auto_now_add=True)
     is_deleted = models.BooleanField(default=False)
+
+class LastSeenOnPost(models.Model):
+    class Meta:
+        db_table = "last_seen_on_post"
+        indexes = [
+            models.Index(name="lastseenonpostindx_user_post", fields=['user', 'post'])
+        ]
+        constraints = [
+            models.UniqueConstraint(name="lastseenonpost_unique_user_post", fields=['user', 'post'])
+        ]
+    
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
+    post = models.ForeignKey(Post, on_delete=models.PROTECT)
+    seen = models.DateTimeField(auto_now=True)

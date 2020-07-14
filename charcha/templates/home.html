@@ -86,7 +86,7 @@
           {% endif %}
           {{ post.num_comments }} comment{{ post.num_comments|pluralize }} |
           {% if selected_sort_by == 'newactivity' %}
-            updated {{ post.last_modified | naturaltime }}
+            last activity {{ post.last_modified | naturaltime }}
           {% else %}
             created {{ post.submission_time | naturaltime }}
           {% endif %}

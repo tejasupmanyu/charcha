@@ -4,6 +4,9 @@ from . import views
 urlpatterns = [
     url(r'^$', views.homepage, name="home"),
     
+    url(r'^posts/(?P<post_id>\d+)/add-comment$', views.AddEditComment.as_view(), name="add_comment"),
+    url(r'^comments/(?P<id>\d+)/edit$', views.AddEditComment.as_view(), name="edit_comment"),
+
     url(r'^posts/(?P<post_id>\d+)/edit/$', views.EditPostView.as_view(), name="edit-discussion"),
     url(r'^posts/(?P<parent_post_id>\d+)/new/(?P<post_type>\w+)/$', views.NewPostView.as_view(), name="new-child-post"),
 
@@ -18,14 +21,11 @@ urlpatterns = [
 
     url(r'^groups/(?P<group_id>\d+)/$', views.group_home, name="group_home"),
     url(r'^groups/(?P<group_id>\d+)/new/(?P<post_type>\w+)/$', views.NewPostView.as_view(), name="new-post"),
-    
-        
+            
     url(r'^profile/me/$', views.myprofile, name="myprofile"),
+    url(r'^profile/me/set-timezone$', views.set_user_timezone, name="set_timezone"),
     url(r'^profile/(?P<userid>\d+)/$', views.profile, name="profile"),
     
-    url(r'^comments/(?P<id>\d+)/reply$', views.ReplyToComment.as_view(), name="reply_to_comment"),
-    url(r'^comments/(?P<id>\d+)/edit$', views.EditComment.as_view(), name="edit_comment"),
-
     url(r'^api/posts/(?P<post_id>\d+)/upvote$', views.upvote_post, name="upvote_post"),
     url(r'^api/posts/(?P<post_id>\d+)/downvote$', views.downvote_post, name="downvote_post"),
 

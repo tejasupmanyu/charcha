@@ -22,7 +22,7 @@
       <!-- <li class="breadcrumb-item active" aria-current="page">{{post.title}}</li> -->
     </ol>
   </nav>
-  <div class="card post original-post">
+  <div id="post-{{post.id}}" class="card post original-post">
     <div class="card-header">
       <div class="d-flex">
         <div>
@@ -63,7 +63,7 @@
     <div class="separator">&nbsp;</div>
   </div>
   {% for childpost in child_posts %}
-  <div id="post-{{childpost.id}}" class="mb-3 rounded card post">
+  <div id="post-{{childpost.id}}" class="mb-3 rounded card post {% if forloop.last %}unread{% endif %}">
     <div class="card-header d-flex align-items-start justify-content-between text-muted ">
       <div>
         {% if childpost.author.avatar %}
@@ -92,18 +92,20 @@
       <div class="text-muted mt-3" role="group">
         {% include "partials/post-vote-control.html" with obj_type='posts' obj=childpost %}
         {% if request.user.id == childpost.author.id %}
-        <a class="btn btn-sm py-0" href="{% url 'edit-discussion' childpost.id %}">
-          <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
+        <a class="text-muted btn btn-sm p-0 mr-2" href="{% url 'edit-discussion' childpost.id %}">
+          <svg width="15px" height="15px" viewBox="0 0 16 16" class="bi bi-pencil-square" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456l-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+            <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+          </svg>
           edit
         </a>
         {% endif %}
-        
-        {% if not childpost.comments %}
-        <a data-action="add-comment" data-post-id="{{childpost.id}}" class="text-muted btn btn-sm p-0" href="">
-          <svg width="20px" height="20px" viewBox="0 0 16 16" class="bi bi-reply" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        {% if childpost.comments.all|length == 0 %}
+        <a data-action="add-comment" data-post-id="{{childpost.id}}" class="text-muted btn btn-sm p-0" href="{% url 'add_comment' childpost.id %}">
+          <svg width="15px" height="15px" viewBox="0 0 16 16" class="bi bi-reply" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
             <path fill-rule="evenodd" d="M9.502 5.013a.144.144 0 0 0-.202.134V6.3a.5.5 0 0 1-.5.5c-.667 0-2.013.005-3.3.822-.984.624-1.99 1.76-2.595 3.876C3.925 10.515 5.09 9.982 6.11 9.7a8.741 8.741 0 0 1 1.921-.306 7.403 7.403 0 0 1 .798.008h.013l.005.001h.001L8.8 9.9l.05-.498a.5.5 0 0 1 .45.498v1.153c0 .108.11.176.202.134l3.984-2.933a.494.494 0 0 1 .042-.028.147.147 0 0 0 0-.252.494.494 0 0 1-.042-.028L9.502 5.013zM8.3 10.386a7.745 7.745 0 0 0-1.923.277c-1.326.368-2.896 1.201-3.94 3.08a.5.5 0 0 1-.933-.305c.464-3.71 1.886-5.662 3.46-6.66 1.245-.79 2.527-.942 3.336-.971v-.66a1.144 1.144 0 0 1 1.767-.96l3.994 2.94a1.147 1.147 0 0 1 0 1.946l-3.994 2.94a1.144 1.144 0 0 1-1.767-.96v-.667z"/>
           </svg>
-          add a comment
+          comment
         </a>
         {% endif %}
         {% if request.user.is_staff %}
@@ -111,29 +113,32 @@
         {% endif %}
       </div>
       <div data-container="post-{{subpost.id}}-comments" class="comments mt-3">
-        {% if childpost.comments %}
+        {% if childpost.comments.all|length > 0 %}
         <ol class="border-top ml-3 list-unstyled">
           {% for comment in childpost.comments.all %}
           <li id="comment-{{comment.id}}" class="py-2 border-bottom">
             <small>
-              <div>{{comment.html | safe}}</div>
+              <div>
+              {{comment.html | safe}}
                – 
-              <a href="{% url 'profile' comment.author.id %}">{{ comment.author.first_name }} {{comment.author.last_name}}</a>
-              {% if request.user.id == comment.author.id %}
-              <a class="pl-2 text-muted" href="{% url 'edit_comment' comment.id %}">
-                <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-pencil-square" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456l-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
-                  <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
-                </svg>
-                edit
-              </a>
-              {% endif %}
-              <span class="pl-1 text-muted"> {{comment.submission_time }}</span>
+              <span class="text-muted">
+                <a href="{% url 'profile' comment.author.id %}">{{ comment.author.first_name }} {{comment.author.last_name}}</a>
+                {{comment.submission_time }}
+                {% if request.user.id == comment.author.id %}
+                <a class="pl-2 text-muted" href="{% url 'edit_comment' comment.id %}">
+                  <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-pencil-square" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456l-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                    <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+                  </svg>
+                </a>
+                {% endif %}
+              </span>
+              </div>
             </small>
           </li>
           {% endfor %}
           <li class="py-2">
-            <a data-action="reply-to-comment" data-comment-id="{{comment.id}}" class="text-muted btn btn-sm p-0" href="">
+            <a class="text-muted btn btn-sm p-0" href="{% url 'add_comment' childpost.id %}">
               <svg width="15px" height="15px" viewBox="0 0 16 16" class="bi bi-reply" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                 <path fill-rule="evenodd" d="M9.502 5.013a.144.144 0 0 0-.202.134V6.3a.5.5 0 0 1-.5.5c-.667 0-2.013.005-3.3.822-.984.624-1.99 1.76-2.595 3.876C3.925 10.515 5.09 9.982 6.11 9.7a8.741 8.741 0 0 1 1.921-.306 7.403 7.403 0 0 1 .798.008h.013l.005.001h.001L8.8 9.9l.05-.498a.5.5 0 0 1 .45.498v1.153c0 .108.11.176.202.134l3.984-2.933a.494.494 0 0 1 .042-.028.147.147 0 0 0 0-.252.494.494 0 0 1-.042-.028L9.502 5.013zM8.3 10.386a7.745 7.745 0 0 0-1.923.277c-1.326.368-2.896 1.201-3.94 3.08a.5.5 0 0 1-.933-.305c.464-3.71 1.886-5.662 3.46-6.66 1.245-.79 2.527-.942 3.336-.971v-.66a1.144 1.144 0 0 1 1.767-.96l3.994 2.94a1.147 1.147 0 0 1 0 1.946l-3.994 2.94a1.144 1.144 0 0 1-1.767-.96v-.667z"/>
               </svg>
