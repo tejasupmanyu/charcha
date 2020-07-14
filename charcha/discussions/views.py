@@ -2,6 +2,8 @@ import json
 import re
 import os
 import pytz
+import datetime
+from django.utils import timezone
 from uuid import uuid4
 
 from django.http import HttpResponse, JsonResponse
@@ -23,7 +25,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import DefaultStorage
 from django.core.exceptions import PermissionDenied
 
-from .models import Post, Comment, Reaction, User, Group
+from .models import Post, Comment, Reaction, User, Group, LastSeenOnPost
 from .models import update_gchat_space
 
 
@@ -83,7 +85,7 @@ class PostView(LoginRequiredMixin, View):
             return HttpResponsePermanentRedirect(post_url)
 
         form = CommentForm()
-        context = {"post": post, "child_posts": child_posts, "form": form}
+        context = {"post": post, "child_posts": child_posts, "form": form, "SERVER_TIME_ISO": timezone.now().isoformat()}
         return render(request, "post.html", context=context)
 
 class AddEditComment(LoginRequiredMixin, View):
@@ -284,6 +286,14 @@ def downvote_comment(request, comment_id):
     comment.downvote(request.user)
     comment.refresh_from_db()
     return HttpResponse(comment.downvotes)
+
+@login_required
+@require_http_methods(['POST'])
+def update_post_last_seen_at(request, post_id):
+    last_seen_str = request.POST['last_seen']
+    last_seen = datetime.datetime.fromisoformat(last_seen_str)
+    LastSeenOnPost.objects.upsert(request.user, post_id, last_seen)
+    return HttpResponse('OK')
 
 @login_required
 def myprofile(request):

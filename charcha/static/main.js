@@ -172,8 +172,11 @@ function onceUserHasReadPost(callback) {
 // Add scroll handler only if we are on the posts page
 $(document).ready(function(){
   if ($("div.post-details").length > 0) {
+    var csrftoken = getCookie('csrftoken');
     var userReadPostHandler = onceUserHasReadPost(function(postId) {
-      console.log("Read Post " + postId)
+      var postIdInt = postId.split("-")[1]
+      var url = "/api/posts/" + postIdInt + "/lastseenat/";
+      $.post(url, {'csrfmiddlewaretoken': csrftoken, "last_seen": serverTimeISO });
     });
     $(window).on('DOMContentLoaded load resize scroll', userReadPostHandler);
   }

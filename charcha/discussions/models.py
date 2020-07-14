@@ -276,8 +276,6 @@ class PostsManager(models.Manager):
             .select_related("author")\
             .select_related("group")\
             .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author")))\
-            #.annotate(lastseen=F('lastseenonpost__seen'))
-            #.prefetch_related(Prefetch('lastseenonpost__seen', queryset=User.objects.filter(id=user.id)))\
             .annotate(lastseen_timestamp=Subquery(LastSeenOnPost.objects.filter(post=OuterRef('pk'), user=user).only('seen').values('seen')[:1]))\
             .filter(
                 Q(id = post_id) | Q(parent_post__id = post_id)
@@ -659,6 +657,12 @@ class Favourite(models.Model):
     favourited_on = models.DateTimeField(auto_now_add=True)
     is_deleted = models.BooleanField(default=False)
 
+class LastSeenOnPostManager(models.Manager):
+    def upsert(self, user, post_id, timestamp):
+        post = Post.objects.for_user(user).get(pk=post_id)
+        LastSeenOnPost.objects.update_or_create(user=user, post=post, defaults={'seen': timestamp})
+        
+
 class LastSeenOnPost(models.Model):
     class Meta:
         db_table = "last_seen_on_post"
@@ -669,6 +673,9 @@ class LastSeenOnPost(models.Model):
             models.UniqueConstraint(name="lastseenonpost_unique_user_post", fields=['user', 'post'])
         ]
     
+    objects = LastSeenOnPostManager()
     user = models.ForeignKey(User, on_delete=models.PROTECT)
     post = models.ForeignKey(Post, on_delete=models.PROTECT)
     seen = models.DateTimeField(auto_now=True)
+
+    

@@ -9,6 +9,7 @@ from .models import User
 
 class LastSeenOnPostAdmin(admin.ModelAdmin):
     fields = ('post', 'user', 'seen')
+    list_display = ('post', 'user', 'seen')
     readonly_fields = ('seen', )
 
 class GchatSpaceAdmin(admin.ModelAdmin):

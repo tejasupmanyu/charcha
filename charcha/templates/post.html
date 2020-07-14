@@ -4,6 +4,12 @@
 {% load crispy_forms_tags %}
 {% block title %}{{ post.title }} | Charcha{% endblock %}
 
+{% block pagejs %}
+<script>
+  var serverTimeISO = "{{ SERVER_TIME_ISO }}";
+</script>
+{% endblock %}
+
 {% block content %}
 {% spaceless %}
 <div class="col-md-8 post-details">
