@@ -10,8 +10,7 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import F
-from django.db.models import Q
+from django.db.models import F, Q, Prefetch, OuterRef, Subquery
 from django.urls import reverse
 from charcha.teams.bot import notify_space
 from bleach.sanitizer import Cleaner
@@ -276,7 +275,10 @@ class PostsManager(models.Manager):
         post_and_child_posts = list(Post.objects\
             .select_related("author")\
             .select_related("group")\
-            .prefetch_related("comments__author")\
+            .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author")))\
+            #.annotate(lastseen=F('lastseenonpost__seen'))
+            #.prefetch_related(Prefetch('lastseenonpost__seen', queryset=User.objects.filter(id=user.id)))\
+            .annotate(lastseen_timestamp=Subquery(LastSeenOnPost.objects.filter(post=OuterRef('pk'), user=user).only('seen').values('seen')[:1]))\
             .filter(
                 Q(id = post_id) | Q(parent_post__id = post_id)
             )\

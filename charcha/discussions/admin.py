@@ -3,9 +3,13 @@ from django.contrib.contenttypes.admin import GenericTabularInline
 
 from .models import GchatSpace, GchatUser, GroupGchatSpace
 from .models import Group, Role, Permission, GroupMember
-from .models import Post, Comment, Reaction
+from .models import Post, Comment, Reaction, LastSeenOnPost
 from .models import Favourite
 from .models import User
+
+class LastSeenOnPostAdmin(admin.ModelAdmin):
+    fields = ('post', 'user', 'seen')
+    readonly_fields = ('seen', )
 
 class GchatSpaceAdmin(admin.ModelAdmin):
     fields = ('name', 'space')
@@ -58,6 +62,7 @@ class ReactionAdmin(admin.ModelAdmin):
 class FavouriteAdmin(admin.ModelAdmin):
     pass
 
+admin.site.register(LastSeenOnPost, LastSeenOnPostAdmin)
 admin.site.register(GchatSpace, GchatSpaceAdmin)
 admin.site.register(Permission, PermissionAdmin)
 admin.site.register(Role, RoleAdmin)

@@ -131,17 +131,14 @@ $('.upvote-button').click(function(){
 
 /*
 * Code to detect if a user has read a post
-* See https://stackoverflow.com/a/7557433/242940
+* CREDIT: https://stackoverflow.com/a/7557433/242940
 */
 function isElementInViewport (el) {
-
   // Special bonus for those using jQuery
   if (typeof jQuery === "function" && el instanceof jQuery) {
       el = el[0];
   }
-
   var rect = el.getBoundingClientRect();
-
   return (
       rect.top >= 0 &&
       rect.left >= 0 &&
@@ -172,8 +169,13 @@ function onceUserHasReadPost(callback) {
   }
 }
 
-var userReadPostHandler = onceUserHasReadPost(function(postId) {
-  console.log("Read Post " + postId)
+// Add scroll handler only if we are on the posts page
+$(document).ready(function(){
+  if ($("div.post-details").length > 0) {
+    var userReadPostHandler = onceUserHasReadPost(function(postId) {
+      console.log("Read Post " + postId)
+    });
+    $(window).on('DOMContentLoaded load resize scroll', userReadPostHandler);
+  }
 });
 
-$(window).on('DOMContentLoaded load resize scroll', userReadPostHandler);
