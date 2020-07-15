@@ -286,15 +286,25 @@ class PostsManager(models.Manager):
             )\
             .order_by(F('parent_post').desc(nulls_first=True), "submission_time"))
         
+        parent_post = post_and_child_posts[0]
+        child_posts = post_and_child_posts[1:]
+        
         for post in post_and_child_posts:
             if post.lastseen_timestamp is None:
                 post.is_read = False
-            elif post.last_modified > post.lastseen_timestamp:
+                post.has_unread_children = True
+                continue
+            
+            if post.last_modified > post.lastseen_timestamp:
                 post.is_read = False
             else:
                 post.is_read = True
             
-            post.has_unread_children = False
+            if post.last_activity > post.lastseen_timestamp:
+                post.has_unread_children = True
+            else:
+                post.has_unread_children = False
+            
             for comment in post.comments.all():
                 if not post.lastseen_timestamp:
                     comment.is_read = False
@@ -304,9 +314,11 @@ class PostsManager(models.Manager):
                     post.has_unread_children = True
                 else:
                     comment.is_read = True
-                
-        parent_post = post_and_child_posts[0]
-        child_posts = post_and_child_posts[1:]
+        
+        for post in child_posts:
+            if not post.is_read or post.has_unread_children:
+                parent_post.has_unread_children = True
+                print('set has_unread_children on parent_post' )
         
         return (parent_post, child_posts)
 
@@ -325,12 +337,12 @@ class PostsManager(models.Manager):
         if sort_by == 'recentposts':
             posts = posts.order_by("-submission_time")
         else:
-            posts = posts.order_by("-last_modified")
+            posts = posts.order_by("-last_activity")
         
         for post in posts:
             if post.lastseen_timestamp is None:
                 post.is_read = False
-            elif post.last_modified > post.lastseen_timestamp:
+            elif post.last_activity > post.lastseen_timestamp:
                 post.is_read = False
             else:
                 post.is_read = True
@@ -390,7 +402,13 @@ class Post(models.Model):
     slug = models.CharField(max_length=120, blank=True)
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     submission_time = models.DateTimeField(auto_now_add=True)
+
+    # When this post was last modified
     last_modified = models.DateTimeField(auto_now=True)
+
+    # activity includes new sub-post, new comment, or edits to sub-post / comment
+    last_activity = models.DateTimeField(auto_now=True)
+
     parent_post = models.ForeignKey(
         'self', 
         null=True,
@@ -424,8 +442,8 @@ class Post(models.Model):
         post.last_modified = now
         post.save()
 
-        self.last_modified = now
-        self.save(update_fields=["last_modified"])
+        self.last_activity = now
+        self.save(update_fields=["last_activity"])
 
         return post
 
@@ -523,24 +541,26 @@ class Post(models.Model):
         self.save()
 
         if self.parent_post:
-            self.parent_post.last_modified = now
-            self.parent_post.save(update_fields=["last_modified"])
+            self.parent_post.last_activity = now
+            self.parent_post.save(update_fields=["last_activity"])
 
     def add_comment(self, html, author):
+        now = timezone.now()
+
         comment = Comment()
         comment.html = html
         comment.post = self
         comment.author = author
+        comment.last_modified = now
         comment.save()
-
-        now = timezone.now()
-        self.last_modified = now
+        
+        self.last_activity = now
         self.num_comments = F('num_comments') + 1
-        self.save(update_fields=["num_comments", "last_modified"])
+        self.save(update_fields=["num_comments", "last_activity"])
 
         if self.parent_post:
-            self.parent_post.last_modified = now
-            self.parent_post.save(update_fields=["last_modified"])
+            self.parent_post.last_activity = now
+            self.parent_post.save(update_fields=["last_activity"])
 
         return comment
 
@@ -589,6 +609,7 @@ class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.PROTECT, related_name="comments")
     html = models.TextField(max_length=8192)
     submission_time = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now_add=True)
     is_deleted = models.BooleanField(default=False)
     
     def save(self, *args, **kwargs):
@@ -596,16 +617,17 @@ class Comment(models.Model):
         super().save(*args, **kwargs)
 
     def edit(self, html, author):
-        self.html = html
-        self.save()
-
         now = timezone.now()
-        self.post.last_modified = now
-        self.post.save(update_fields=["last_modified"])
+        self.html = html
+        self.last_modified = now
+        self.save()
+        
+        self.post.last_activity = now
+        self.post.save(update_fields=["last_activity"])
 
         if self.post.parent_post:
-            self.post.parent_post.last_modified = now
-            self.post.parent_post.save(update_fields=["last_modified"])
+            self.post.parent_post.last_activity = now
+            self.post.parent_post.save(update_fields=["last_activity"])
 
         return self
 

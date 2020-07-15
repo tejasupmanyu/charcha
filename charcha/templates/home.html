@@ -86,7 +86,7 @@
           {% endif %}
           Last Seen: {{ post.lastseen_timestamp }}
           {% if selected_sort_by == 'newactivity' %}
-            last activity {{ post.last_modified  }}
+            last activity {{ post.last_activity  }}
           {% else %}
             created {{ post.submission_time  }}
           {% endif %}

@@ -28,7 +28,7 @@
       <!-- <li class="breadcrumb-item active" aria-current="page">{{post.title}}</li> -->
     </ol>
   </nav>
-  <div id="post-{{post.id}}" class="card post original-post {% if post.is_read %} read {% else %} unread {% endif %}">
+  <div id="post-{{post.id}}" class="card post original-post {% if post.is_read %} read {% else %} unread {% endif %} {% if post.has_unread_children %} has-unread-children {% endif %}">
     <div class="card-header">
       <div class="d-flex">
         <div>
