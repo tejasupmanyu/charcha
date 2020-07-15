@@ -28,7 +28,7 @@
       <!-- <li class="breadcrumb-item active" aria-current="page">{{post.title}}</li> -->
     </ol>
   </nav>
-  <div id="post-{{post.id}}" class="card post original-post">
+  <div id="post-{{post.id}}" class="card post original-post {% if post.is_read %} read {% else %} unread {% endif %}">
     <div class="card-header">
       <div class="d-flex">
         <div>
@@ -43,7 +43,6 @@
         </div>
         
         <small class="text-muted ml-auto">  
-            Last Seen: {{post.lastseen_timestamp}}
             {{ post.submission_time | naturaltime }}
         </small>
       </div>
@@ -71,7 +70,7 @@
     <div class="separator">&nbsp;</div>
   </div>
   {% for childpost in child_posts %}
-  <div id="post-{{childpost.id}}" class="mb-3 rounded card post {% if forloop.last %}unread{% endif %}">
+  <div id="post-{{childpost.id}}" class="mb-3 rounded card post {% if childpost.is_read %} read {% else %} unread {% endif %} {% if childpost.has_unread_children %} has-unread-children {% endif %}">
     <div class="card-header d-flex align-items-start justify-content-between text-muted ">
       <div>
         {% if childpost.author.avatar %}
@@ -125,7 +124,7 @@
         {% if childpost.comments.all|length > 0 %}
         <ol class="border-top ml-3 list-unstyled">
           {% for comment in childpost.comments.all %}
-          <li id="comment-{{comment.id}}" class="py-2 border-bottom">
+          <li id="comment-{{comment.id}}" class="py-2 border-bottom {% if comment.is_read %} read {% else %} unread {% endif %}">
             <small>
               <div>
               {{comment.html | safe}}

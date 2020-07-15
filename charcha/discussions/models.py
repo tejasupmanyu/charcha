@@ -197,7 +197,11 @@ class Group(models.Model):
         post.author = author
         post.slug = self._slugify(post.title)
         post.group = self
+
+        now = timezone.now()
+        post.last_modified = now
         post.save()
+
         self._on_new_post(post)
         return post
 
@@ -282,6 +286,25 @@ class PostsManager(models.Manager):
             )\
             .order_by(F('parent_post').desc(nulls_first=True), "submission_time"))
         
+        for post in post_and_child_posts:
+            if post.lastseen_timestamp is None:
+                post.is_read = False
+            elif post.last_modified > post.lastseen_timestamp:
+                post.is_read = False
+            else:
+                post.is_read = True
+            
+            post.has_unread_children = False
+            for comment in post.comments.all():
+                if not post.lastseen_timestamp:
+                    comment.is_read = False
+                    post.has_unread_children = True
+                elif comment.submission_time > post.lastseen_timestamp:
+                    comment.is_read = False
+                    post.has_unread_children = True
+                else:
+                    comment.is_read = True
+                
         parent_post = post_and_child_posts[0]
         child_posts = post_and_child_posts[1:]
         
@@ -291,6 +314,7 @@ class PostsManager(models.Manager):
         posts = Post.objects\
             .select_related('author')\
             .select_related('group')\
+            .annotate(lastseen_timestamp=Subquery(LastSeenOnPost.objects.filter(post=OuterRef('pk'), user=user).only('seen').values('seen')[:1]))\
             .filter(
                 Q(group__members=user) | Q(group__group_type=Group.OPEN), 
                 parent_post=None
@@ -302,7 +326,15 @@ class PostsManager(models.Manager):
             posts = posts.order_by("-submission_time")
         else:
             posts = posts.order_by("-last_modified")
-        return posts.all()
+        
+        for post in posts:
+            if post.lastseen_timestamp is None:
+                post.is_read = False
+            elif post.last_modified > post.lastseen_timestamp:
+                post.is_read = False
+            else:
+                post.is_read = True
+        return posts
 
     def vote_type_to_string(self, vote_type):
         mapping = {
@@ -387,8 +419,14 @@ class Post(models.Model):
         post.author = author
         post.parent_post = self
         post.group = self.group
-        post.last_modified = timezone.now()
+
+        now = timezone.now()
+        post.last_modified = now
         post.save()
+
+        self.last_modified = now
+        self.save(update_fields=["last_modified"])
+
         return post
 
     def upvote(self, user):
@@ -480,7 +518,13 @@ class Post(models.Model):
     def edit_post(self, title, html, author):
         self.title = title
         self.html = html
+        now = timezone.now()
+        self.last_modified = now
         self.save()
+
+        if self.parent_post:
+            self.parent_post.last_modified = now
+            self.parent_post.save(update_fields=["last_modified"])
 
     def add_comment(self, html, author):
         comment = Comment()
@@ -489,31 +533,19 @@ class Post(models.Model):
         comment.author = author
         comment.save()
 
+        now = timezone.now()
+        self.last_modified = now
         self.num_comments = F('num_comments') + 1
-        self.save(update_fields=["num_comments"])
+        self.save(update_fields=["num_comments", "last_modified"])
+
+        if self.parent_post:
+            self.parent_post.last_modified = now
+            self.parent_post.save(update_fields=["last_modified"])
+
         return comment
 
     def watchers(self):
-        post_type = ContentType.objects.get_for_model(Post)
-        
-        # A post watcher is
-        # 1. The author of the post
-        # 2. Anyone who has commented on the post
-        # 3. Anyone who has voted on the post
-        return User.objects.raw("""
-                WITH post_participants as (
-                    SELECT p.id as postid, p.author_id as userid FROM posts p
-                    UNION ALL
-                    SELECT c.post_id as postid, c.author_id as userid FROM comments c
-                    UNION ALL
-                    SELECT v.object_id as postid, v.voter_id as userid FROM votes v
-                    WHERE v.content_type_id = %s
-                ) 
-                SELECT DISTINCT u.id, u.username, u.gchat_space
-                FROM users u JOIN post_participants pp on u.id = pp.userid
-                WHERE u.gchat_space is not NULL and u.gchat_space != ''
-                AND pp.postid = %s
-            """, [post_type.id, self.id])
+        return []
 
     def __str__(self):
         if self.title:
@@ -548,66 +580,6 @@ class CommentsManager(models.Manager):
     def for_user(self, user):
         return Comment.objects.filter(Q(post__group__members=user) | Q(post__group__group_type=Group.OPEN))
 
-    def best_ones_first(self, post, user):
-        post.check_view_permission(user)
-        comment_type = ContentType.objects.get_for_model(Comment)
-        from django.db import connection
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT c.id, c.html, u.id, u.username, c.submission_time,
-                c.wbs, length(c.wbs)/5 as indent, 
-                c.upvotes, c.downvotes, c.flags,
-                c.upvotes - c.downvotes as score,
-                up.is_upvoted, down.is_downvoted, u.avatar,
-                u.first_name, u.last_name
-                FROM comments c 
-                INNER JOIN users u on c.author_id = u.id
-                LEFT OUTER JOIN (
-                    SELECT 1 as is_upvoted, v1.object_id as comment_id
-                    FROM votes v1
-                    WHERE v1.content_type_id = %s
-                    AND type_of_vote = 1
-                    AND v1.voter_id = %s
-                ) up on c.id = up.comment_id
-                LEFT OUTER JOIN (
-                    SELECT 1 as is_downvoted, v2.object_id as comment_id
-                    FROM votes v2
-                    WHERE v2.content_type_id = %s
-                    AND type_of_vote = 2
-                    AND v2.voter_id = %s
-                ) down on c.id = down.comment_id
-                WHERE c.post_id = %s
-                ORDER BY c.wbs
-            """, [comment_type.id, user.id, 
-                    comment_type.id, user.id, 
-                    post.id])
-            
-            comments = []
-            parent = None
-            for row in cursor.fetchall():
-                comment = self.model(
-                        id = row[0], html = row[1], 
-                        submission_time = row[4],
-                        wbs = row[5],
-                        upvotes = row[7], downvotes=row[8],
-                        flags = row[9]
-                    )
-                author = User(id=row[2], username=row[3], avatar=row[13], first_name=row[14], last_name=row[15])
-                comment.author = author
-                comment.indent = row[6]
-                comment.score = row[10]
-                comment.is_upvoted = True if row[11] else False
-                comment.is_downvoted = True if row[12] else False
-
-                if comment.indent == 1:
-                    parent = comment
-                    parent.subcomments = []
-                    comments.append(comment)
-                else:
-                    parent.subcomments.append(comment)
-
-            return comments
-
 class Comment(models.Model):
     class Meta:
         db_table = "comments"
@@ -626,6 +598,15 @@ class Comment(models.Model):
     def edit(self, html, author):
         self.html = html
         self.save()
+
+        now = timezone.now()
+        self.post.last_modified = now
+        self.post.save(update_fields=["last_modified"])
+
+        if self.post.parent_post:
+            self.post.parent_post.last_modified = now
+            self.post.parent_post.save(update_fields=["last_modified"])
+
         return self
 
     def on_new_comment(self):

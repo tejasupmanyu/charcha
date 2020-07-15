@@ -130,6 +130,26 @@ $('.upvote-button').click(function(){
   });
 
 /*
+ * Logic to detect if a user has read a post
+ * 
+ * The logic is simple - a post is considered read if the entire div is visible in the browser.
+ * The div for a post also contains the comments in the post
+ * 
+ * - We use a code snippet to detect if the div is in the viewport. See isElementInViewport
+ * - We call the isElementInViewport function every time there is a scroll event or the browser is resized
+ * - If the visibility of a post changes from previously invisible to visible, we mark the post as read
+ * 
+ * Now, if a post is read, and all it's child comments have also been read, we don't do any of these checks
+ * 
+ * To notify the server, we update the lastSeenTime for the post. The lastSeenTime is the time on the server
+ * when the page was loaded. So if the page loaded at 10:00 AM, and I read the posts and it's comments at 10:15 AM,
+ * the API call to the server will indicate the post was lastSeenAt 10:00 AM. 
+ * This way, posts and comments created between 10:00 AM and 10:15 AM will still show as unread
+ * 
+ * We can revisit this strategy if we actively poll the server for new changes, but that isn't on the roadmap for now at least.
+ */
+
+/*
 * Code to detect if a user has read a post
 * CREDIT: https://stackoverflow.com/a/7557433/242940
 */
@@ -149,12 +169,12 @@ function isElementInViewport (el) {
 
 function onceUserHasReadPost(callback) {
   var visibilityOfPost = {};
-  $("div.post.unread").each(function(index, el){
+  $("div.post.unread, div.post.has-unread-children").each(function(index, el){
     var postId = el.id;
     visibilityOfPost[postId] = false;
   });
   return function () {
-    $("div.post.unread").each(function(index, el) {
+    $("div.post.unread, div.post.has-unread-children").each(function(index, el) {
       var postId = el.id;
       var oldVisible = visibilityOfPost[postId];
       if (oldVisible) {
@@ -170,15 +190,23 @@ function onceUserHasReadPost(callback) {
 }
 
 // Add scroll handler only if we are on the posts page
-$(document).ready(function(){
+$(window).on('DOMContentLoaded', function(){
   if ($("div.post-details").length > 0) {
     var csrftoken = getCookie('csrftoken');
     var userReadPostHandler = onceUserHasReadPost(function(postId) {
       var postIdInt = postId.split("-")[1]
       var url = "/api/posts/" + postIdInt + "/lastseenat/";
+
+      // serverTimeISO is a global variable created on page load in post.html
       $.post(url, {'csrfmiddlewaretoken': csrftoken, "last_seen": serverTimeISO });
     });
-    $(window).on('DOMContentLoaded load resize scroll', userReadPostHandler);
+
+    /* Call our handler immediately the first time round */
+    userReadPostHandler();
+
+    /* And then set a callback on dom events */
+    $(window).on('load resize scroll', userReadPostHandler);
   }
 });
 
+/* END logic to detect if a post is read */

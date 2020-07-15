@@ -70,7 +70,7 @@
   </div>
   <div class="post-list">
   {% for post in posts %}
-  <div class="media post mb-2">
+  <div class="media post mb-2 {% if post.is_read %} read {% else %} unread {% endif %}">
     {% if post.author.avatar %}
       <img width="40" src="{{post.author.avatar}}" class="rounded-circle mr-3"/>
     {% else %}
@@ -84,11 +84,11 @@
           {% if not group %}
           <a href="{% url 'group_home' post.group.id %}">{{post.group.name}}</a> |
           {% endif %}
-          {{ post.num_comments }} comment{{ post.num_comments|pluralize }} |
+          Last Seen: {{ post.lastseen_timestamp }}
           {% if selected_sort_by == 'newactivity' %}
-            last activity {{ post.last_modified | naturaltime }}
+            last activity {{ post.last_modified  }}
           {% else %}
-            created {{ post.submission_time | naturaltime }}
+            created {{ post.submission_time  }}
           {% endif %}
           {% if request.user.is_staff %}
           | <a href="{% url 'admin:discussions_post_change' post.id %}">manage</a>

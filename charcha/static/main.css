@@ -33,6 +33,9 @@ nav ol.breadcrumb {
   background-color: inherit;
 }
 
+.unread {
+  background-color:#FFFF33 !important;
+}
 .logo {
   color: #ff5722 !important;
 }
