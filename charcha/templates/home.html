@@ -84,7 +84,6 @@
           {% if not group %}
           <a href="{% url 'group_home' post.group.id %}">{{post.group.name}}</a> |
           {% endif %}
-          Last Seen: {{ post.lastseen_timestamp }}
           {% if selected_sort_by == 'newactivity' %}
             last activity {{ post.last_activity  }}
           {% else %}

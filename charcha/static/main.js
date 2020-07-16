@@ -110,14 +110,16 @@ $('.upvote-button').click(function(){
   });
 
   $(document).ready(function(){
-    $('a[data-action="reply-to-comment"]').click(function(e) {
+    $('a[data-action="add-comment"]').click(function(e) {
       e.preventDefault();
       var anchor = $(e.target);
-      var parentCommentId = anchor.data("comment-id");
+      var postId = anchor.data("post-id");
       var template = $("#reply-template").html();
-      var html = template.replace(new RegExp("<<commentid>>"), parentCommentId)
+      var html = template.replace(new RegExp("<<post_id>>"), postId)
       
-      var commentContainer = $('div[data-container="subcomments-' + parentCommentId + '"]').first();
+      console.log('div[data-container="post-' + postId + '-comments"]');
+      var commentContainer = $('div[data-container="post-' + postId + '-comments"]').first();
+      console.log(commentContainer);
       commentContainer.append(html);
       commentContainer.find('button[data-action="cancel-reply"]').click(function(e) {
         var replyButton = $(e.target);

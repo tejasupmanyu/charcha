@@ -121,9 +121,10 @@ class AddEditComment(LoginRequiredMixin, View):
         
         if post.parent_post:
             post_url = reverse('post', args=[post.parent_post.id, post.parent_post.slug])
+            post_url = post_url + "#post-" + str(post.id)
         else:
             post_url = reverse('post', args=[post.id, post.slug])
-        return HttpResponseRedirect(post_url + "#comment-" + str(comment.id))
+        return HttpResponseRedirect(post_url)
 
 class NewPostForm(forms.ModelForm):
     class Meta:

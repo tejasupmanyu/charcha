@@ -302,7 +302,7 @@ class PostsManager(models.Manager):
             
             if post.last_activity > post.lastseen_timestamp:
                 post.has_unread_children = True
-            else:
+            else:   
                 post.has_unread_children = False
             
             for comment in post.comments.all():
@@ -318,7 +318,6 @@ class PostsManager(models.Manager):
         for post in child_posts:
             if not post.is_read or post.has_unread_children:
                 parent_post.has_unread_children = True
-                print('set has_unread_children on parent_post' )
         
         return (parent_post, child_posts)
 

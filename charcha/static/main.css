@@ -113,17 +113,17 @@ div.separator {
   font-size: 1.5rem;
 }
 
-.subcomments trix-toolbar .trix-button-group--block-tools,
-.subcomments trix-toolbar .trix-button-group--file-tools
+.comments trix-toolbar .trix-button-group--block-tools,
+.comments trix-toolbar .trix-button-group--file-tools
  {
   display:none;
 }
 
-.subcomments .trix-content br {
+.comments .trix-content br {
   display: none;
 }
 
-.subcomments trix-editor {
+.comments trix-editor {
   width: 80%;
   margin-right: 5px;
 }
