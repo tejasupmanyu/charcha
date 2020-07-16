@@ -431,7 +431,8 @@ class Post(models.Model):
     num_comments = models.IntegerField(default=0)
     score = models.IntegerField(default=0)
     last_seen = models.ManyToManyField(User, through='LastSeenOnPost', related_name='last_seen')
-
+    tags = models.ManyToManyField('Tag', through='PostTag', related_name='posts')
+    
     def new_child_post(self, author, post):
         post.author = author
         post.parent_post = self
@@ -679,4 +680,31 @@ class LastSeenOnPost(models.Model):
     post = models.ForeignKey(Post, on_delete=models.PROTECT)
     seen = models.DateTimeField(auto_now=True)
 
+class Tag(models.Model):
+    class Meta:
+        db_table = "tags"
+        indexes = [
+            models.Index(fields=["ext_id",]),
+            models.Index(fields=["name", ]),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['parent', 'name'], name="tag_unique_name_within_parent")
+        ]
     
+    name = models.CharField(max_length=100)
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, default=None)
+    is_external = models.BooleanField(default=False)
+    imported_on = models.DateTimeField(null=True, default=None)
+    ext_code = models.CharField(null=True, max_length=40)
+    ext_id = models.CharField(null=True, max_length=40)
+
+    def __str__(self):
+        return self.name
+
+class PostTag(models.Model):
+    class Meta:
+        db_table = "post_tags"
+    
+    post = models.ForeignKey(Post, on_delete=models.PROTECT)
+    tag = models.ForeignKey(Tag, on_delete=models.PROTECT)
+    tagged_on = models.DateTimeField(auto_now_add=True)

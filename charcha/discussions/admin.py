@@ -5,7 +5,11 @@ from .models import GchatSpace, GchatUser, GroupGchatSpace
 from .models import Group, Role, Permission, GroupMember
 from .models import Post, Comment, Reaction, LastSeenOnPost
 from .models import Favourite
-from .models import User
+from .models import User, Tag
+
+class TagAdmin(admin.ModelAdmin):
+    fields = ('name', 'parent', 'ext_id')
+    list_display = ('name', 'parent', 'ext_id')
 
 class LastSeenOnPostAdmin(admin.ModelAdmin):
     fields = ('post', 'user', 'seen')
@@ -63,6 +67,7 @@ class ReactionAdmin(admin.ModelAdmin):
 class FavouriteAdmin(admin.ModelAdmin):
     pass
 
+admin.site.register(Tag, TagAdmin)
 admin.site.register(LastSeenOnPost, LastSeenOnPostAdmin)
 admin.site.register(GchatSpace, GchatSpaceAdmin)
 admin.site.register(Permission, PermissionAdmin)
