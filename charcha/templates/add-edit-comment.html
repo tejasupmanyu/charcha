@@ -4,7 +4,7 @@
 {% block title %}Reply to Comment{% endblock %}
 
 {% block content %}
-<div class="col-md-8">
+<div class="col-md-8 comments">
 
     {% if post %}
     <h2>New Comment</h2>
@@ -12,6 +12,9 @@
     <h2>Edit Comment</h2>
     {% endif %}
     <form method="post">
+        <div class="alert alert-danger" role="alert">
+            {{ form.html.errors }}
+        </div>
         {% csrf_token %}
         {{ form | crispy }}
         <trix-editor class="trix-content" input="id_html"></trix-editor>
