@@ -424,7 +424,7 @@ class Post(models.Model):
             (ANSWER, 'Answer'),
         ),
         default=DISCUSSION)
-    html = models.TextField(blank=True, max_length=8192)
+    html = models.TextField(max_length=8192)
     is_deleted = models.BooleanField(default=False)
     sticky = models.BooleanField(default=False)
     accepted_answer = models.BooleanField(default=False)
@@ -607,7 +607,7 @@ class Comment(models.Model):
     objects = CommentsManager()
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     post = models.ForeignKey(Post, on_delete=models.PROTECT, related_name="comments")
-    html = models.TextField(max_length=8192)
+    html = models.TextField(max_length=512)
     submission_time = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now_add=True)
     is_deleted = models.BooleanField(default=False)
@@ -664,7 +664,6 @@ class LastSeenOnPostManager(models.Manager):
     def upsert(self, user, post_id, timestamp):
         post = Post.objects.for_user(user).get(pk=post_id)
         LastSeenOnPost.objects.update_or_create(user=user, post=post, defaults={'seen': timestamp})
-        
 
 class LastSeenOnPost(models.Model):
     class Meta:
