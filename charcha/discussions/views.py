@@ -222,7 +222,7 @@ class NewPostView(LoginRequiredMixin, View):
 class EditPostForm(NewPostForm):
     class Meta:
         model = Post
-        fields = ['title', 'html']
+        fields = ['title', 'html', 'tags']
         widgets = {'html': forms.HiddenInput()}
 
 class EditChildPostForm(EditPostForm):
@@ -257,6 +257,8 @@ class EditPostView(LoginRequiredMixin, View):
             post_url = parent_post_url + "#post-" + str(post.id)
         else:
             post_url = reverse('post', args=[post.id, post.slug])
+
+        form.save_m2m()
         return HttpResponseRedirect(post_url)
 
 @login_required
