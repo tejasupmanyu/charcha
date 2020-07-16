@@ -129,10 +129,11 @@ class AddEditComment(LoginRequiredMixin, View):
 class NewPostForm(forms.ModelForm):
     class Meta:
         model = Post
-        fields = ['title', 'html']
+        fields = ['title', 'html', 'tags']
         labels = {
             'title': 'Title',
-            'html': 'Details'
+            'html': 'Details',
+            'tags': 'Tags',
         }
         widgets = {
             'html': forms.HiddenInput()
@@ -203,7 +204,6 @@ class NewPostView(LoginRequiredMixin, View):
         if form.is_valid():
             post = form.save(commit=False)
             post.post_type = Post.get_post_type(post_type)
-
             if parent_post:
                 post = parent_post.new_child_post(request.user, post)
                 new_post_url = reverse('post', args=[parent_post.id, parent_post.slug]) + "#post-" + str(post.id)
@@ -212,6 +212,9 @@ class NewPostView(LoginRequiredMixin, View):
                 new_post_url = reverse('post', args=[post.id, post.slug])
             else:
                 raise Exception("One of parent_post or group should be non-None")
+
+            # now save the tags
+            form.save_m2m()
             return HttpResponseRedirect(new_post_url)
         else:
             return render(request, "new-post.html", context={"form": form})
