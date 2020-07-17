@@ -10,7 +10,7 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import F, Q, Prefetch, OuterRef, Subquery
+from django.db.models import F, Q, Prefetch, OuterRef, Subquery, Count
 from django.urls import reverse
 from charcha.teams.bot import notify_space
 from bleach.sanitizer import Cleaner
@@ -204,6 +204,14 @@ class Group(models.Model):
 
         self._on_new_post(post)
         return post
+
+    def recent_tags(self, period=30):
+        tags_with_counts = Tag.objects\
+            .filter(posts__group=self)\
+            .values('id', 'name')\
+            .annotate(count=Count('name'))\
+            .order_by('-count')
+        return list(tags_with_counts)
 
     def _on_new_post(self, post):
         event = {

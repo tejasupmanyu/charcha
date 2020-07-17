@@ -47,17 +47,18 @@ def homepage(request):
     if sort_by not in ('newactivity', 'recentposts'):
         sort_by = 'newactivity'
     posts = Post.objects.recent_posts(request.user, sort_by=sort_by)
-    return render(request, "home.html", context={"posts": posts, "groups": [], "selected_sort_by": sort_by})
+    groups = Group.objects.for_user(request.user).all()
+    return render(request, "home.html", context={"posts": posts, "groups": groups, "selected_sort_by": sort_by})
 
 @login_required
 def group_home(request, group_id):
     group = get_object_or_404_check_acl(Group, requester=request.user, pk=group_id)
-    # active_members = team.active_team_members()
+    recent_tags = group.recent_tags()
     sort_by = request.GET.get('sort_by', 'newactivity')
     if sort_by not in ('newactivity', 'recentposts'):
         sort_by = 'newactivity'
     posts = Post.objects.recent_posts(request.user, group=group, sort_by=sort_by)
-    return render(request, "home.html", context={"posts": posts, "group": group, "selected_sort_by": sort_by})
+    return render(request, "home.html", context={"posts": posts, "group": group, "recent_tags": recent_tags, "selected_sort_by": sort_by})
 
 @login_required
 def set_user_timezone(request):

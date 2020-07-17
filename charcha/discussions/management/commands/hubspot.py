@@ -11,8 +11,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         hubspot_api_key = os.environ['HUBSPOT_API_KEY']
-        hashedin, _ = Tag.objects.get_or_create(name="hashedin", parent=None, is_external=False)
-        deals, _ = Tag.objects.get_or_create(name="deals", parent=hashedin, is_external=False)
+        hashedin, _ = Tag.objects.get_or_create(name="Hashedin", parent=None, is_external=False)
+        deals, _ = Tag.objects.get_or_create(name="Deal", parent=hashedin, is_external=False)
 
         hubspot_deals = get_all_deals_from_hubspot(hubspot_api_key)
 

@@ -103,7 +103,7 @@
 {% if groups %}
 <div class="col-md-4">
   <div class="card mt-3">
-    <h4 class="card-header">My Teams</h4>
+    <h4 class="card-header">My Groups</h4>
       <ul class="list-group list-group-flush">
         {% for group in groups %}
         <li class="py-1 list-group-item"><a href="{% url 'group_home' group.id %}">{{group.name}}</a></li>
@@ -125,6 +125,20 @@
     </div>
   </div>
   {% endif %}
+
+  <div class="card mt-3">
+    <h4 class="card-header">Recent Tags</h4>
+    <div class="card-body">
+      <ol class="list-unstyled">
+      {% for tag in recent_tags %}
+        <li class="mb-2">
+          <a href="{% url "group_home" group.id %}"><span class="tag mr-1">{{ tag.name }}</span></a>
+          <span class="tag-count">x {{tag.count}}</span>
+        </li>
+      {% endfor %}
+      </ol>
+    </div>
+  </div>
 
   {% if active_members %}
   <div class="card mt-3">

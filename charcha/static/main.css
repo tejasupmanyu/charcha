@@ -39,6 +39,9 @@ nav ol.breadcrumb {
   border: rgba(0,0,0,.125) 1px solid;
   border-radius: 5px;
 }
+.tag-count {
+  font-size: 80%;
+}
 
 .unread {
   background-color:#FFFF33 !important;
