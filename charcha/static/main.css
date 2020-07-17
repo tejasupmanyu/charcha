@@ -33,6 +33,13 @@ nav ol.breadcrumb {
   background-color: inherit;
 }
 
+.tag { 
+  font-size: 80%;
+  padding: 3px 5px;
+  border: rgba(0,0,0,.125) 1px solid;
+  border-radius: 5px;
+}
+
 .unread {
   background-color:#FFFF33 !important;
 }

@@ -13,12 +13,8 @@
 {% block content %}
 {% spaceless %}
 <div class="col-md-8 post-details">
-  <h1 class="card-title d-flex justify-content-between">
-    <span>{{ post.title }}</span>
-    <div style="width:30px">{% include "partials/post-type-icon.html" with post_type=post.post_type %}</div>
-  </h1>
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
+  <nav aria-label=" breadcrumb">
+    <ol class="breadcrumb mt-1 mb-3">
       <li class="breadcrumb-item">
         <a href="{% url "group_home" post.group.id %}">{{ post.group.name | title }}</a>
       </li>
@@ -28,6 +24,17 @@
       <!-- <li class="breadcrumb-item active" aria-current="page">{{post.title}}</li> -->
     </ol>
   </nav>
+  <h1 class="card-title d-flex justify-content-between">
+    <span>{{ post.title }}</span>
+    <div style="width:30px">{% include "partials/post-type-icon.html" with post_type=post.post_type %}</div>
+  </h1>
+
+  <div class="mt-n2 mb-4">
+    {% for tag in post.tags.all %}
+    <a href="{% url "group_home" post.group.id %}"><span class="tag mr-2">{{ tag.name }}</span></a>
+    {% endfor %}
+  </div>
+
   <div id="post-{{post.id}}" class="card post original-post {% if post.is_read %} read {% else %} unread {% endif %} {% if post.has_unread_children %} has-unread-children {% endif %}">
     <div class="card-header">
       <div class="d-flex">

@@ -279,6 +279,7 @@ class PostsManager(models.Manager):
         post_and_child_posts = list(Post.objects\
             .select_related("author")\
             .select_related("group")\
+            .prefetch_related("tags")\
             .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author")))\
             .annotate(lastseen_timestamp=Subquery(LastSeenOnPost.objects.filter(post=OuterRef('pk'), user=user).only('seen').values('seen')[:1]))\
             .filter(
@@ -431,7 +432,7 @@ class Post(models.Model):
     num_comments = models.IntegerField(default=0)
     score = models.IntegerField(default=0)
     last_seen = models.ManyToManyField(User, through='LastSeenOnPost', related_name='last_seen')
-    tags = models.ManyToManyField('Tag', through='PostTag', related_name='posts')
+    tags = models.ManyToManyField('Tag', through='PostTag', related_name='posts', blank=True)
     
     def new_child_post(self, author, post):
         post.author = author

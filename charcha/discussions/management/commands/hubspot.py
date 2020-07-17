@@ -65,6 +65,3 @@ def _extract_deals(raw_deals):
         deals.append(deal)
 
     return deals
-
-if __name__ == '__main__':
-    print(get_all_deals('1a75b241-c3ea-411e-9c7e-946e73e0f7a1'))

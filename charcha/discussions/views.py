@@ -250,7 +250,9 @@ class EditPostView(LoginRequiredMixin, View):
             context = {"form": form}
             return render(request, "edit-post.html", context=context)
         else:
+            form.save(commit=False)
             post.edit_post(form.cleaned_data['title'], form.cleaned_data['html'], request.user)
+            form.save_m2m()
         
         if post.parent_post:
             parent_post_url = reverse('post', args=[post.parent_post.id, post.parent_post.slug])
@@ -258,7 +260,7 @@ class EditPostView(LoginRequiredMixin, View):
         else:
             post_url = reverse('post', args=[post.id, post.slug])
 
-        form.save_m2m()
+        
         return HttpResponseRedirect(post_url)
 
 @login_required
