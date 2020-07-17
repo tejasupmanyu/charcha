@@ -21,6 +21,10 @@ def _load_drive_client():
     drive_client = googleapiclient.discovery.build('drive', 'v3', credentials=delegated_credentials)
     return drive_client
 
+def file_metadata(service, fileId):
+    metadata = service.files().get(fileId=fileId).execute()
+    return metadata
+    
 def list_files(service):
     # Call the Drive v3 API
     results = service.files().list(
@@ -33,6 +37,3 @@ def list_files(service):
         print('Files:')
         for item in items:
             print(u'{0} ({1})'.format(item['name'], item['id']))
-
-if __name__ == '__main__':
-    list_files(_load_drive_client())
