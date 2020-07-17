@@ -12,7 +12,7 @@
 
 {% block content %}
 {% spaceless %}
-<div class="col-md-8 post-details">
+<div class="col-md-12">
   <nav aria-label=" breadcrumb">
     <ol class="breadcrumb mt-1 mb-3">
       <li class="breadcrumb-item">
@@ -24,6 +24,8 @@
       <!-- <li class="breadcrumb-item active" aria-current="page">{{post.title}}</li> -->
     </ol>
   </nav>
+</div>
+<div class="col-md-8 post-details">
   <h1 class="card-title d-flex justify-content-between">
     <span>{{ post.title }}</span>
     <div style="width:30px">{% include "partials/post-type-icon.html" with post_type=post.post_type %}</div>
@@ -175,8 +177,58 @@
     <button type="submit" class="mt-3 btn charcha-btn">Reply</button>
   </form>
 </div>
-<div class="col-md-4 mt-2">
-  
+<div class="col-md-4">
+  <div class="sidebar pb-2 border-bottom">
+    <h4>Notifications</h4>
+    <div>
+      <div class="dropdown show">
+        <button class="btn d-flex border align-items-center dropdown-toggle" href="javascript:void(0)" role="button" id="subscriptionBtn" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-broadcast" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" d="M3.05 3.05a7 7 0 0 0 0 9.9.5.5 0 0 1-.707.707 8 8 0 0 1 0-11.314.5.5 0 0 1 .707.707zm2.122 2.122a4 4 0 0 0 0 5.656.5.5 0 0 1-.708.708 5 5 0 0 1 0-7.072.5.5 0 0 1 .708.708zm5.656-.708a.5.5 0 0 1 .708 0 5 5 0 0 1 0 7.072.5.5 0 1 1-.708-.708 4 4 0 0 0 0-5.656.5.5 0 0 1 0-.708zm2.122-2.12a.5.5 0 0 1 .707 0 8 8 0 0 1 0 11.313.5.5 0 0 1-.707-.707 7 7 0 0 0 0-9.9.5.5 0 0 1 0-.707z"/>
+            <path d="M10 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/>
+          </svg>
+          <span class="ml-2">Subscribe</span>
+        </button>
+        <div class="dropdown-menu" aria-labelledby="subscriptionBtn">
+          <button disabled class="dropdown-item">
+            <div class="d-flex flex-column">
+              <span>Request Feedback</span>
+              <small class="text-muted">on a design, proposal, code etc.</small>
+            </div>
+          </button>
+          <button class="dropdown-item" href="">
+            <div class="d-flex flex-column">
+              <span>Question</span>
+              <small class="text-muted">on company issues, technology, etc.</small>
+            </div>
+          </button>
+          <button class="dropdown-item" href="">
+            <div class="d-flex flex-column">
+              <span>Discussion</span>
+              <small class="text-muted">On any topic relevant to the group</small>
+            </div>
+          </button>
+          <button class="dropdown-item" href="">
+            <div class="d-flex flex-column">
+              <span>Announcement</span>
+              <small class="text-muted">Inform the group of new developments</small>
+            </div>
+          </button>
+        </div>
+      </div>
+      {% if not post.my_subscription %}
+        <small>You are not receiving notifications from this thread</small>
+      {% elif post.my_subscription == 1 %}
+        <small>You are receiving notifications on any activity on this thread</small>
+      {% elif post.my_subscription == 2 %}
+        <small>You are receiving notifications on new posts and replies to your posts</small>
+      {% elif post.my_subscription == 3 %}
+        <small>You are receiving notifications on replies to your posts</small>
+      {% else %}
+        <small>Unknown notification preference</small>
+      {% endif %}
+    </div>
+  </div>
 </div>
 <div id="reply-template" class="d-none">
   <div data-container="reply-form" class="mt-3">

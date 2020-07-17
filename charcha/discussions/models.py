@@ -281,23 +281,26 @@ class PostsManager(models.Manager):
         return Post.objects.filter(Q(group__members=user) | Q(group__group_type=Group.OPEN))
 
     def get_post_details(self, post_id, user):
-        # Get the post and all child posts in a single query
-        # The first object is the parent post
-        # Subsequent objects are child posts, sorted by submission_time in ascending order
-        post_and_child_posts = list(Post.objects\
+        
+        parent_post = Post.objects\
             .select_related("author")\
+            .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author")))\
             .select_related("group")\
             .prefetch_related("tags")\
+            .annotate(lastseen_timestamp=Subquery(LastSeenOnPost.objects.filter(post=OuterRef('pk'), user=user).only('seen').values('seen')[:1]))\
+            .annotate(my_subscription=Subquery(PostSubscribtion.objects.filter(post=OuterRef('pk'), user=user).only('notify_on').values('notify_on')[:1]))\
+            .get(pk=post_id)
+        
+        child_posts = list(Post.objects\
+            .select_related("author")\
             .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author")))\
             .annotate(lastseen_timestamp=Subquery(LastSeenOnPost.objects.filter(post=OuterRef('pk'), user=user).only('seen').values('seen')[:1]))\
-            .filter(
-                Q(id = post_id) | Q(parent_post__id = post_id)
-            )\
-            .order_by(F('parent_post').desc(nulls_first=True), "submission_time"))
+            .filter(parent_post__id = post_id)\
+            .order_by("submission_time"))
         
-        parent_post = post_and_child_posts[0]
-        child_posts = post_and_child_posts[1:]
-        
+        post_and_child_posts = [parent_post]
+        post_and_child_posts.extend(child_posts)
+
         for post in post_and_child_posts:
             if post.lastseen_timestamp is None:
                 post.is_read = False
@@ -441,7 +444,8 @@ class Post(models.Model):
     score = models.IntegerField(default=0)
     last_seen = models.ManyToManyField(User, through='LastSeenOnPost', related_name='last_seen')
     tags = models.ManyToManyField('Tag', through='PostTag', related_name='posts', blank=True)
-    
+    subscriptions = models.ManyToManyField(User, through='PostSubscribtion', related_name='subscriptions', blank=True)
+
     def new_child_post(self, author, post):
         post.author = author
         post.parent_post = self
@@ -717,3 +721,33 @@ class PostTag(models.Model):
     post = models.ForeignKey(Post, on_delete=models.PROTECT)
     tag = models.ForeignKey(Tag, on_delete=models.PROTECT)
     tagged_on = models.DateTimeField(auto_now_add=True)
+
+class PostSubscribtionManager(models.Manager):
+    def subscribe(self, post, user, notify_on):
+        PostSubscribtion.objects.update_or_create(post=post, user=user, defaults={'notify_on': notify_on})
+
+    def unsubscribe(self, post, user):
+        PostSubscribtion.objects.filter(post=post, user=user).delete()
+
+class PostSubscribtion(models.Model):
+    ALL_ACTIVITIES = 1
+    NEW_POSTS_AND_REPLIES_ONLY = 2
+    REPLIES_ONLY = 3
+
+    _NOTIFY_ON_CHOICES = (
+        (ALL_ACTIVITIES, "On Any Activity"),
+        (NEW_POSTS_AND_REPLIES_ONLY, "New Posts and Replies Only"),
+        (REPLIES_ONLY, "Replies Only")
+    )
+
+    @staticmethod
+    def notify_on_choices():
+        return PostSubscribtion._NOTIFY_ON_CHOICES
+    
+    class Meta:
+        db_table = "post_subscriptions"
+
+    objects = PostSubscribtionManager()
+    post = models.ForeignKey(Post, on_delete=models.PROTECT)
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
+    notify_on = models.IntegerField(choices=_NOTIFY_ON_CHOICES)

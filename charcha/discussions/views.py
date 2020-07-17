@@ -25,7 +25,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import DefaultStorage
 from django.core.exceptions import PermissionDenied
 
-from .models import Post, Comment, Reaction, User, Group, LastSeenOnPost
+from .models import Post, Comment, Reaction, User, Group, LastSeenOnPost, PostSubscribtion
 from .models import update_gchat_space
 
 
@@ -86,7 +86,13 @@ class PostView(LoginRequiredMixin, View):
             return HttpResponsePermanentRedirect(post_url)
 
         form = CommentForm()
-        context = {"post": post, "child_posts": child_posts, "form": form, "SERVER_TIME_ISO": timezone.now().isoformat()}
+        context = {
+            "post": post, 
+            "child_posts": child_posts, 
+            "form": form, 
+            "SERVER_TIME_ISO": timezone.now().isoformat(),
+            "notification_choices": PostSubscribtion.notify_on_choices(),
+        }
         return render(request, "post.html", context=context)
 
 class AddEditComment(LoginRequiredMixin, View):
@@ -303,6 +309,19 @@ def update_post_last_seen_at(request, post_id):
     last_seen = datetime.datetime.fromisoformat(last_seen_str)
     LastSeenOnPost.objects.upsert(request.user, post_id, last_seen)
     return HttpResponse('OK')
+
+@login_required
+@require_http_methods(['POST'])
+def subscribe_to_post(request, post_id, notification_preference):
+    post = get_object_or_404_check_acl(Post, request.user, pk=post_id)
+    notify_on = PostSubscribtion.notification_preference_from_string(notification_preference)
+    PostSubscribtion.objects.subscribe(post, request.user, notify_on)
+
+@login_required
+@require_http_methods(['POST'])
+def mute_post(request, post_id):
+    post = get_object_or_404_check_acl(Post, request.user, pk=post_id)
+    PostSubscribtion.objects.unsubscribe(post, request.user)
 
 @login_required
 def myprofile(request):
