@@ -12,7 +12,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         hubspot_api_key = os.environ['HUBSPOT_API_KEY']
         hashedin, _ = Tag.objects.get_or_create(name="Hashedin", parent=None, is_external=False)
-        deals, _ = Tag.objects.get_or_create(name="Deal", parent=hashedin, is_external=False)
+        sales, _ = Tag.objects.get_or_create(name="Sales", parent=None, is_external=False)
+        proposal, _ = Tag.objects.get_or_create(name="Proposals", parent=hashedin, is_external=False)
 
         hubspot_deals = get_all_deals_from_hubspot(hubspot_api_key)
 
@@ -20,7 +21,7 @@ class Command(BaseCommand):
             try:
                 Tag.objects.update_or_create(
                     ext_id=hubspot_deal['ext_id'], 
-                    parent=deals,
+                    parent=proposal,
                     defaults=hubspot_deal
                 )
             except django.db.utils.IntegrityError:
@@ -30,7 +31,7 @@ class Command(BaseCommand):
                 hubspot_deal['name'] = unique_name[:100]
                 Tag.objects.update_or_create(
                     ext_id=hubspot_deal['ext_id'], 
-                    parent=deals,
+                    parent=proposal,
                     defaults=hubspot_deal
                 )
 
