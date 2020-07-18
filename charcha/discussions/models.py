@@ -208,8 +208,8 @@ class Group(models.Model):
     def recent_tags(self, period=30):
         tags_with_counts = Tag.objects\
             .filter(posts__group=self)\
-            .values('id', 'name')\
-            .annotate(count=Count('name'))\
+            .values('id', 'name', 'fqn')\
+            .annotate(count=Count('fqn'))\
             .order_by('-count')
         return list(tags_with_counts)
 
@@ -705,13 +705,17 @@ class Tag(models.Model):
     
     name = models.CharField(max_length=100)
     parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, default=None)
+
+    # fqn is fully qualified name, and is redundnat
+    # it combines parent.name as well as name into a single string
+    fqn = models.CharField(max_length=200)
     is_external = models.BooleanField(default=False)
     imported_on = models.DateTimeField(null=True, default=None)
     ext_code = models.CharField(null=True, max_length=40)
     ext_id = models.CharField(null=True, max_length=40)
 
     def __str__(self):
-        return self.name
+        return self.fqn
 
 class PostTag(models.Model):
     class Meta:

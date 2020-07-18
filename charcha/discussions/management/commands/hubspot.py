@@ -63,6 +63,7 @@ def _extract_deals(raw_deals):
         deal['ext_id'] = raw_deal['dealId']
         deal['ext_code'] = None
         deal['name'] = raw_deal.get('properties', {}).get('dealname', {}).get('value', None)
+        deal['fqn'] = "Proposals: " + deal['name']
         deals.append(deal)
 
     return deals

@@ -121,7 +121,7 @@
       <ol class="list-unstyled">
       {% for tag in recent_tags %}
         <li class="mb-2">
-          <a href="{% url "group_home" group.id %}"><span class="tag mr-1">{{ tag.name }}</span></a>
+          <a href="{% url "group_home" group.id %}"><span class="tag mr-1">{{ tag.fqn }}</span></a>
           <span class="tag-count">x {{tag.count}}</span>
         </li>
       {% endfor %}
