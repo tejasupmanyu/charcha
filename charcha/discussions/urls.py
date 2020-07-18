@@ -9,6 +9,7 @@ urlpatterns = [
 
     url(r'^posts/(?P<post_id>\d+)/edit/$', views.EditPostView.as_view(), name="edit-discussion"),
     url(r'^posts/(?P<parent_post_id>\d+)/new/(?P<post_type>\w+)/$', views.NewPostView.as_view(), name="new-child-post"),
+    url(r'^posts/(?P<post_id>\d+)/subscribe/$', views.subscribe_to_post, name="subscribe-to-post"),
 
     # The following 3 urls are all urls for a post
     # - "post" is the canonical url, and should be preferred when using reverse

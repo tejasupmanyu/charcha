@@ -72,6 +72,7 @@
         {% endif %}
       </div>
     </div>
+    <div data-post-id="{{post.id}}" class="end-of-post"></div>
   </div>
   <div class="d-flex justify-content-center align-items-center py-4">
     <div class="separator">&nbsp;</div>
@@ -164,6 +165,7 @@
         </ol>
         {% endif %}
       </div>
+      <div data-post-id="{{childpost.id}}" class="end-of-post"></div>
     </div>
 
   </div>
@@ -177,56 +179,71 @@
     <button type="submit" class="mt-3 btn charcha-btn">Reply</button>
   </form>
 </div>
-<div class="col-md-4">
-  <div class="sidebar pb-2 border-bottom">
-    <h4>Notifications</h4>
+<div class="col-md-4 pl-3">
+  <div class="sidebar pb-3 border-bottom">
+    <h4 class="mt-2 mb-3">Notifications</h4>
     <div>
+      <form method="post" action="{% url 'subscribe-to-post' post.id %}">
+        {% csrf_token %}
       <div class="dropdown show">
         <button class="btn d-flex border align-items-center dropdown-toggle" href="javascript:void(0)" role="button" id="subscriptionBtn" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
           <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-broadcast" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
             <path fill-rule="evenodd" d="M3.05 3.05a7 7 0 0 0 0 9.9.5.5 0 0 1-.707.707 8 8 0 0 1 0-11.314.5.5 0 0 1 .707.707zm2.122 2.122a4 4 0 0 0 0 5.656.5.5 0 0 1-.708.708 5 5 0 0 1 0-7.072.5.5 0 0 1 .708.708zm5.656-.708a.5.5 0 0 1 .708 0 5 5 0 0 1 0 7.072.5.5 0 1 1-.708-.708 4 4 0 0 0 0-5.656.5.5 0 0 1 0-.708zm2.122-2.12a.5.5 0 0 1 .707 0 8 8 0 0 1 0 11.313.5.5 0 0 1-.707-.707 7 7 0 0 0 0-9.9.5.5 0 0 1 0-.707z"/>
             <path d="M10 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/>
           </svg>
-          <span class="ml-2">Subscribe</span>
+          <span class="ml-2">
+            {% if not post.my_subscription or post.my_subscription == 0 %}
+              Mute
+            {% elif post.my_subscription == 1 %}
+              Replies Only
+            {% elif post.my_subscription == 2 %}
+              On New Posts and Replies
+            {% elif post.my_subscription == 3 %}
+              All Notifications
+            {% else %}
+              Unknown State
+            {% endif %}
+          </span>
         </button>
         <div class="dropdown-menu" aria-labelledby="subscriptionBtn">
-          <button disabled class="dropdown-item">
+          <button {% if not post.my_subscription or post.my_subscription == 0 %} disabled {% endif %} data-dont-disable-on-submit="true" class="dropdown-item" type="submit" name="subscription" value="0">
             <div class="d-flex flex-column">
-              <span>Request Feedback</span>
-              <small class="text-muted">on a design, proposal, code etc.</small>
+              <span>Mute</span>
+              <small class="text-muted">No notifications, except mentions</small>
             </div>
           </button>
-          <button class="dropdown-item" href="">
+          <button {% if post.my_subscription == 1 %} disabled {% endif %} class="dropdown-item"  data-dont-disable-on-submit="true" type="submit" name="subscription" value="1">
             <div class="d-flex flex-column">
-              <span>Question</span>
-              <small class="text-muted">on company issues, technology, etc.</small>
+              <span>On Replies</span>
+              <small class="text-muted">On replies to your posts or comments</small>
             </div>
           </button>
-          <button class="dropdown-item" href="">
+          <button {% if post.my_subscription == 2 %} disabled {% endif %} class="dropdown-item"   data-dont-disable-on-submit="true" type="submit" name="subscription" value="2">
             <div class="d-flex flex-column">
-              <span>Discussion</span>
-              <small class="text-muted">On any topic relevant to the group</small>
+              <span>On New Posts and Replies</span>
+              <small class="text-muted">On a new post in this thread, plus on replies</small>
             </div>
           </button>
-          <button class="dropdown-item" href="">
+          <button {% if post.my_subscription == 3 %} disabled {% endif %} class="dropdown-item"   data-dont-disable-on-submit="true" type="submit" name="subscription" value="3">
             <div class="d-flex flex-column">
-              <span>Announcement</span>
-              <small class="text-muted">Inform the group of new developments</small>
+              <span>All Notifications</span>
+              <small class="text-muted">On any activity on this thread</small>
             </div>
           </button>
         </div>
       </div>
-      {% if not post.my_subscription %}
-        <small>You are not receiving notifications from this thread</small>
+      {% if not post.my_subscription or post.my_subscription == 0 %}
+        <small>You are not receiving notifications on this thread, except @mentions</small>
       {% elif post.my_subscription == 1 %}
-        <small>You are receiving notifications on any activity on this thread</small>
+      <small>You are receiving notifications on replies to your posts</small>
       {% elif post.my_subscription == 2 %}
         <small>You are receiving notifications on new posts and replies to your posts</small>
       {% elif post.my_subscription == 3 %}
-        <small>You are receiving notifications on replies to your posts</small>
+        <small>You are receiving all notifications on this thread</small>
       {% else %}
         <small>Unknown notification preference</small>
       {% endif %}
+      </form>
     </div>
   </div>
 </div>
@@ -237,7 +254,7 @@
       {% csrf_token %}
       <input type="hidden" name="html" id="reply-to-<<post_id>>"/>
       <trix-editor class="trix-content" input="reply-to-<<post_id>>"></trix-editor>
-      <button name="submitbtn" type="submit" class="btn btn-sm charcha-btn">Add Comment</button>
+      <button name="submitbtn" data-disable-on-submit="true" type="submit" class="btn btn-sm charcha-btn">Add Comment</button>
     </div>
   </form>
   </div>

@@ -1,3 +1,4 @@
+/* Get a specific cookie, usually used to get the CSRF token */
 function getCookie(name) {
     var cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -33,6 +34,9 @@ $('.upvote-button').click(function(){
         });
 });
 
+
+/*********************************************************************** */
+/* Handle file/image uploads from the rich text editor */
 
 (function() {
     var uploadUrl = "/api/upload";
@@ -100,15 +104,25 @@ $('.upvote-button').click(function(){
     }
   })();
 
-  /* Disable submit button once clicked to prevent accidental double submission */
-  $(document).ready(function(){
-    $("form").submit(function(e) {
-      $(e.target).find('button[type="submit"').attr('disabled', true);
-      $(e.target).find('input[type="submit"').attr('disabled', true);
+  /* 
+    Disable submit button once clicked to prevent accidental double submission 
+    We want some buttons to actually be submitted, so don't disable if 
+    the data attribute dont-disable-on-submit is present
+  */
+  $(document).on("submit", function(e) {
+      $(e.target)
+        .find('button[type="submit"], input[type="submit"]')
+        .each(function(index, e) {
+          if ($(e).data("dont-disable-on-submit")) {
+            return;
+          }
+          $(e).attr('disabled', true); 
+        });
+      
       return true;
-    });
   });
 
+  
   $(document).ready(function(){
     $('a[data-action="add-comment"]').click(function(e) {
       e.preventDefault();
@@ -116,16 +130,8 @@ $('.upvote-button').click(function(){
       var postId = anchor.data("post-id");
       var template = $("#reply-template").html();
       var html = template.replace(new RegExp("<<post_id>>"), postId)
-      
-      console.log('div[data-container="post-' + postId + '-comments"]');
       var commentContainer = $('div[data-container="post-' + postId + '-comments"]').first();
-      console.log(commentContainer);
       commentContainer.append(html);
-      commentContainer.find('button[data-action="cancel-reply"]').click(function(e) {
-        var replyButton = $(e.target);
-        var replyFormContainer = replyButton.parents('div[data-container="reply-form"]').first();
-        replyFormContainer.remove();
-      });
       anchor.remove();
       return true;
     });
@@ -171,13 +177,13 @@ function isElementInViewport (el) {
 
 function onceUserHasReadPost(callback) {
   var visibilityOfPost = {};
-  $("div.post.unread, div.post.has-unread-children").each(function(index, el){
-    var postId = el.id;
+  $("div.post.unread .end-of-post, div.post.has-unread-children .end-of-post").each(function(index, el){
+    var postId = $(el).data("post-id");
     visibilityOfPost[postId] = false;
   });
   return function () {
-    $("div.post.unread, div.post.has-unread-children").each(function(index, el) {
-      var postId = el.id;
+    $("div.post.unread .end-of-post, div.post.has-unread-children .end-of-post").each(function(index, el) {
+      var postId = $(el).data("post-id");
       var oldVisible = visibilityOfPost[postId];
       if (oldVisible) {
         return;
@@ -196,8 +202,7 @@ $(window).on('DOMContentLoaded', function(){
   if ($("div.post-details").length > 0) {
     var csrftoken = getCookie('csrftoken');
     var userReadPostHandler = onceUserHasReadPost(function(postId) {
-      var postIdInt = postId.split("-")[1]
-      var url = "/api/posts/" + postIdInt + "/lastseenat/";
+      var url = "/api/posts/" + postId + "/lastseenat/";
 
       // serverTimeISO is a global variable created on page load in post.html
       $.post(url, {'csrfmiddlewaretoken': csrftoken, "last_seen": serverTimeISO });

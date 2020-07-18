@@ -281,7 +281,6 @@ class PostsManager(models.Manager):
         return Post.objects.filter(Q(group__members=user) | Q(group__group_type=Group.OPEN))
 
     def get_post_details(self, post_id, user):
-        
         parent_post = Post.objects\
             .select_related("author")\
             .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author")))\
@@ -726,18 +725,17 @@ class PostSubscribtionManager(models.Manager):
     def subscribe(self, post, user, notify_on):
         PostSubscribtion.objects.update_or_create(post=post, user=user, defaults={'notify_on': notify_on})
 
-    def unsubscribe(self, post, user):
-        PostSubscribtion.objects.filter(post=post, user=user).delete()
-
 class PostSubscribtion(models.Model):
-    ALL_ACTIVITIES = 1
+    MUTE = 0
+    REPLIES_ONLY = 1
     NEW_POSTS_AND_REPLIES_ONLY = 2
-    REPLIES_ONLY = 3
-
+    ALL_NOTIFICATIONS = 3
+    
     _NOTIFY_ON_CHOICES = (
-        (ALL_ACTIVITIES, "On Any Activity"),
+        (MUTE, "Mute"),
+        (REPLIES_ONLY, "Replies Only"),
         (NEW_POSTS_AND_REPLIES_ONLY, "New Posts and Replies Only"),
-        (REPLIES_ONLY, "Replies Only")
+        (ALL_NOTIFICATIONS, "All Notifications"),
     )
 
     @staticmethod

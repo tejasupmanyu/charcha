@@ -312,16 +312,11 @@ def update_post_last_seen_at(request, post_id):
 
 @login_required
 @require_http_methods(['POST'])
-def subscribe_to_post(request, post_id, notification_preference):
+def subscribe_to_post(request, post_id):
     post = get_object_or_404_check_acl(Post, request.user, pk=post_id)
-    notify_on = PostSubscribtion.notification_preference_from_string(notification_preference)
+    notify_on = int(request.POST['subscription'])
     PostSubscribtion.objects.subscribe(post, request.user, notify_on)
-
-@login_required
-@require_http_methods(['POST'])
-def mute_post(request, post_id):
-    post = get_object_or_404_check_acl(Post, request.user, pk=post_id)
-    PostSubscribtion.objects.unsubscribe(post, request.user)
+    return redirect(reverse('post', args=[post.id, post.slug]))
 
 @login_required
 def myprofile(request):
