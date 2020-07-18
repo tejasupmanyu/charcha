@@ -48,24 +48,13 @@
     {% endif %}
     
   </div>
-  <div class="d-flex mb-1">
-    <div class="ml-auto">
-      <span class="mr-1">Sort by:</span>
-      <span class="mr-1">
-        {% if selected_sort_by == 'recentposts' %}
-        Recent Posts
-        {% else %}
-        <a href="{{ request.path }}?sort_by=recentposts">Recent Posts</a>
-        {% endif %}
-      </span>
-      <span class="mr-1">|</span>
-      <span>
-        {% if selected_sort_by == 'newactivity' %}
-        New Activity
-        {% else %}
-        <a href="{{ request.path }}?sort_by=newactivity">New Activity</a>
-        {% endif %}
-      </span>
+  <div class="d-flex">
+    <div class="d-flex ml-auto">
+      <span class="">Sort by:</span>
+      <nav class="nav">
+        <a class="py-0 px-1 nav-link {% if selected_sort_by == 'recentposts' %}active{% endif %}" href="{{ request.path }}?sort_by=recentposts">Recent Posts</a>
+        <a class="py-0 px-1 nav-link {% if selected_sort_by == 'newactivity' %}active{% endif %}"  href="{{ request.path }}?sort_by=newactivity">New Activity</a>
+      </nav>
     </div>
   </div>
   <div class="post-list">

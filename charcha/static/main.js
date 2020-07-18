@@ -122,7 +122,7 @@ $('.upvote-button').click(function(){
       return true;
   });
 
-  
+  /* Display add comment form inline using javascript */
   $(document).ready(function(){
     $('a[data-action="add-comment"]').click(function(e) {
       e.preventDefault();

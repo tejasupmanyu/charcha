@@ -47,7 +47,7 @@
           <img width="40" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
           {% endif %}
         </div>
-        <div>
+        <div class="text-muted">
           <a href="{% url 'profile' post.author.id %}">{{ post.author.first_name }} {{ post.author.last_name }}</a>
         </div>
         
