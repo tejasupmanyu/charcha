@@ -102,6 +102,10 @@ class User(AbstractUser):
 
     score = models.IntegerField(default=0)
     avatar = models.URLField(max_length=1000, default=None, null=True)
+    band = models.CharField(max_length=5, default=None, null=True)
+    designation = models.CharField(max_length=30, default=None, null=True)
+    employee_id = models.CharField(max_length=4, default=None, null=True)
+    joining_date = models.DateField(null=True, default=None)
     
     # If the user has added charcha bot, then this field stores the unique space id
     gchat_space = models.CharField(max_length=50, default=None, null=True)
