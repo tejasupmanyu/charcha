@@ -14,7 +14,17 @@ logger = logging.getLogger(__name__)
 METABASE_URL = "https://data.hashedin.com/api/card/<<ID>>/query"
 
 HasherProfile = namedtuple('HasherProfile', ('id', 'email', 'first_name', 'last_name', 'band', 'designation', 'employee_id', 'joining_date'))
-Project = namedtuple('Project', ('id', 'title', 'project_manager', 'project_manager_email'))
+Project = namedtuple('Project', ('id', 'state', 'title', 'project_manager', 'project_manager_email'))
+
+IS_PROJECT_STATE_VISIBLE = {
+    'LEAD':  True,
+    'ABANDONDED': False, 
+    'CLOSED': False, 
+    'COMPLETED': False, 
+    'IN_PROGRESS': True, 
+    'SOW': True, 
+    'DELIVERED': True, 
+}
 
 class Command(BaseCommand):
     help = 'Imports hashers and projects from hiway'
@@ -41,6 +51,7 @@ class Command(BaseCommand):
                 logger.warn("User with email " + hasher.email + " does not exist in charcha database")
 
         for project in hiway_projects:
+            is_visible = IS_PROJECT_STATE_VISIBLE[project.state]
             Tag.objects.update_or_create(
                 ext_id = project.id,
                 parent = projects_tag,
@@ -49,6 +60,7 @@ class Command(BaseCommand):
                     'ext_code': project.id,
                     'fqn': "Projects: " + project.title,
                     'is_external': True,
+                    'is_visible': is_visible,
                     'imported_on': timezone.now()
                 }
             )

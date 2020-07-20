@@ -8,8 +8,8 @@ from .models import Favourite
 from .models import User, Tag
 
 class TagAdmin(admin.ModelAdmin):
-    fields = ('name', 'parent', 'ext_id')
-    list_display = ('name', 'parent', 'ext_id')
+    fields = ('name', 'parent', 'ext_id', 'attributes')
+    list_display = ('name', 'parent', 'ext_id', 'is_visible', 'attributes')
 
 class LastSeenOnPostAdmin(admin.ModelAdmin):
     fields = ('post', 'user', 'seen')

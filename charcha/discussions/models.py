@@ -4,7 +4,7 @@ import re
 from django.utils import timezone
 from django.db.utils import IntegrityError
 from django.db import models
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import JSONField, ArrayField
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
@@ -715,9 +715,11 @@ class Tag(models.Model):
     fqn = models.CharField(max_length=200)
     is_external = models.BooleanField(default=False)
     imported_on = models.DateTimeField(null=True, default=None)
-    ext_code = models.CharField(null=True, max_length=40)
     ext_id = models.CharField(null=True, max_length=40)
-
+    is_visible = models.BooleanField(default=True)
+    # Adhoc attributes that describe this tag
+    # must be toplevel key=value pair, nested objects are not supported
+    attributes = JSONField(default=dict)
     def __str__(self):
         return self.fqn
 
