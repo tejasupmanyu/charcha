@@ -5,6 +5,7 @@ import os
 import django
 from django.core.management.base import BaseCommand, CommandError
 from charcha.discussions.models import Tag
+from django.utils import timezone
 
 # For a list of all properties of a deal, see 
 # https://api.hubapi.com/properties/v2/deals/properties?hapikey={{token}}
@@ -120,6 +121,7 @@ def _extract_deals(raw_deals, users, deal_stages):
         deal['fqn'] = "Proposals: " + deal['name']
         deal['is_visible'] = is_deal_visible(raw_deal)
         deal['ext_link'] = "https://app.hubspot.com/contacts/" + str(portalId) + "/deal/" + str(dealId)
+        deal['imported_on'] = timezone.now()
         attributes = {}
         for key in HUBSPOT_PROPERTIES:
             # We have already extracted dealname above, so skip it

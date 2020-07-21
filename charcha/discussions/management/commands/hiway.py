@@ -52,6 +52,10 @@ class Command(BaseCommand):
 
         for project in hiway_projects:
             is_visible = IS_PROJECT_STATE_VISIBLE[project.state]
+            attributes = {
+                'project_manager': project.project_manager,
+                'project_state': project.state,
+            }
             Tag.objects.update_or_create(
                 ext_id = project.id,
                 parent = projects_tag,
@@ -61,7 +65,8 @@ class Command(BaseCommand):
                     'fqn': "Projects: " + project.title,
                     'is_external': True,
                     'is_visible': is_visible,
-                    'imported_on': timezone.now()
+                    'imported_on': timezone.now(),
+                    'attributes': attributes,
                 }
             )
 
