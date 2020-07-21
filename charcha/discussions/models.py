@@ -288,7 +288,7 @@ class PostsManager(models.Manager):
     def get_post_details(self, post_id, user):
         parent_post = Post.objects\
             .select_related("author")\
-            .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author")))\
+            .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author").order_by('submission_time')))\
             .select_related("group")\
             .prefetch_related("tags")\
             .annotate(lastseen_timestamp=Subquery(LastSeenOnPost.objects.filter(post=OuterRef('pk'), user=user).only('seen').values('seen')[:1]))\
@@ -297,7 +297,7 @@ class PostsManager(models.Manager):
         
         child_posts = list(Post.objects\
             .select_related("author")\
-            .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author")))\
+            .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author").order_by('submission_time')))\
             .annotate(lastseen_timestamp=Subquery(LastSeenOnPost.objects.filter(post=OuterRef('pk'), user=user).only('seen').values('seen')[:1]))\
             .filter(parent_post__id = post_id)\
             .order_by("submission_time"))

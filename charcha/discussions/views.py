@@ -25,7 +25,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import DefaultStorage
 from django.core.exceptions import PermissionDenied
 
-from .models import Post, Comment, Reaction, User, Group, LastSeenOnPost, PostSubscribtion
+from .models import Post, Comment, Reaction, User, Group, LastSeenOnPost, PostSubscribtion, Tag
 from .models import update_gchat_space
 
 
@@ -134,6 +134,10 @@ class AddEditComment(LoginRequiredMixin, View):
         return HttpResponseRedirect(post_url)
 
 class NewPostForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['tags'].queryset = Tag.objects.filter(is_visible=True).all()
+
     class Meta:
         model = Post
         fields = ['title', 'html', 'tags']
