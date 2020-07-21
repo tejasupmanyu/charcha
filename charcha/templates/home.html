@@ -52,8 +52,8 @@
     <div class="d-flex ml-auto">
       <span class="">Sort by:</span>
       <nav class="nav">
+        <a class="py-0 px-1 border-right nav-link {% if selected_sort_by == 'newactivity' %}active{% endif %}"  href="{{ request.path }}?sort_by=newactivity">New Activity</a>
         <a class="py-0 px-1 nav-link {% if selected_sort_by == 'recentposts' %}active{% endif %}" href="{{ request.path }}?sort_by=recentposts">Recent Posts</a>
-        <a class="py-0 px-1 nav-link {% if selected_sort_by == 'newactivity' %}active{% endif %}"  href="{{ request.path }}?sort_by=newactivity">New Activity</a>
       </nav>
     </div>
   </div>
