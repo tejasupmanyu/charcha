@@ -8,7 +8,7 @@ from charcha.discussions.models import Tag
 
 # For a list of all properties of a deal, see 
 # https://api.hubapi.com/properties/v2/deals/properties?hapikey={{token}}
-HUBSPOT_PROPERTIES = ['pipeline', 'hubspot_owner_id', 'dealname', 'businessunit', 'dealstage', 'description', 'source', 'geography']
+HUBSPOT_PROPERTIES = ['hubspot_owner_id', 'dealname', 'businessunit', 'dealstage', 'description', 'source', 'geography']
 
 # These are the stages we expect
 # At runtime, we verify the stages have not changed
@@ -111,13 +111,15 @@ def get_all_deals_from_hubspot(api_key):
 def _extract_deals(raw_deals, users, deal_stages):
     deals = []
     for raw_deal in raw_deals:
+        portalId = raw_deal['portalId']
+        dealId = raw_deal['dealId']
         deal = {}
         deal['is_external'] = True
-        deal['ext_id'] = raw_deal['dealId']
-        deal['ext_code'] = None
+        deal['ext_id'] = dealId
         deal['name'] = _get_nested(raw_deal, "properties.dealname.value")
         deal['fqn'] = "Proposals: " + deal['name']
         deal['is_visible'] = is_deal_visible(raw_deal)
+        deal['ext_link'] = "https://app.hubspot.com/contacts/" + str(portalId) + "/deal/" + str(dealId)
         attributes = {}
         for key in HUBSPOT_PROPERTIES:
             # We have already extracted dealname above, so skip it

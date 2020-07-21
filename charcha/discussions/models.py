@@ -690,6 +690,7 @@ class Tag(models.Model):
     is_external = models.BooleanField(default=False)
     imported_on = models.DateTimeField(null=True, default=None)
     ext_id = models.CharField(null=True, max_length=40)
+    ext_link = models.URLField(null=True, blank=True)
     is_visible = models.BooleanField(default=True)
     # Adhoc attributes that describe this tag
     # must be toplevel key=value pair, nested objects are not supported
