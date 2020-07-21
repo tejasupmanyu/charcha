@@ -1,6 +1,7 @@
 from collections import defaultdict
 import re
 
+from django.db import connection
 from django.utils import timezone
 from django.db.utils import IntegrityError
 from django.db import models
@@ -305,6 +306,11 @@ class PostsManager(models.Manager):
         post_and_child_posts.extend(child_posts)
 
         for post in post_and_child_posts:
+            # For the time being, add an upvotes field so that the UI doesn't have to change
+            if '👍' in post.reaction_summary:
+                post.upvotes = post.reaction_summary['👍']
+            else:
+                post.upvotes = 0
             if post.lastseen_timestamp is None:
                 post.is_read = False
                 post.has_unread_children = True
@@ -421,7 +427,7 @@ class Post(models.Model):
     last_modified = models.DateTimeField(auto_now=True)
 
     # activity includes new sub-post, new comment, or edits to sub-post / comment
-    last_activity = models.DateTimeField(auto_now=True)
+    last_activity = models.DateTimeField(null=True, blank=True)
 
     parent_post = models.ForeignKey(
         'self', 
@@ -444,6 +450,7 @@ class Post(models.Model):
     accepted_answer = models.BooleanField(default=False)
     resolved = models.BooleanField(default=False)
     num_comments = models.IntegerField(default=0)
+    reaction_summary = JSONField(default=dict)
     score = models.IntegerField(default=0)
     last_seen = models.ManyToManyField(User, through='LastSeenOnPost', related_name='last_seen')
     tags = models.ManyToManyField('Tag', through='PostTag', related_name='posts', blank=True)
@@ -464,80 +471,50 @@ class Post(models.Model):
         return post
 
     def upvote(self, user):
-        self.check_view_permission(user)
-        self._vote(user, UPVOTE)
+        return self.react(user, '👍')
+        
 
     def downvote(self, user):
-        self.check_view_permission(user)
-        self._vote(user, DOWNVOTE)
+        return self.react(user, '👎')
 
-    def _undo_vote(self, user):
-        self.check_view_permission(user)
-        content_type = ContentType.objects.get_for_model(self)
-        votes = Vote.objects.filter(
-            content_type=content_type.id,
-            object_id=self.id, type_of_vote__in=(UPVOTE, DOWNVOTE),
-            voter=user)
-
-        upvotes = 0
-        downvotes = 0
-        for v in votes:
-            if v.type_of_vote == UPVOTE:
-                upvotes = upvotes + 1
-            elif v.type_of_vote == DOWNVOTE:
-                downvotes = downvotes + 1
-            else:
-                raise Exception("Invalid state, logic bug in _undo_vote")
-            v.delete()
-
-        self.upvotes = F('upvotes') - upvotes
-        self.downvotes = F('downvotes') - downvotes
-        self.save(update_fields=["upvotes", "downvotes"])
-
-        # Increment/Decrement the score of author
-        self.author.score = F('score') - upvotes + downvotes
-        self.author.save(update_fields=["score"])
-
-    def _vote(self, user, type_of_vote):
-        content_type = ContentType.objects.get_for_model(self)
-        if self._already_voted(user, content_type, type_of_vote):
-            self._undo_vote(user)
+    def react(self, user, reaction_emoji):
+        SCORE_FOR_REACTION = {
+            '👍': 1,
+            '👎': -1,
+            '😀': 1,
+        }
+        if reaction_emoji not in SCORE_FOR_REACTION:
             return
+
         if self._voting_for_myself(user):
             return
+        
+        score_delta = SCORE_FOR_REACTION[reaction_emoji]
 
-        # First, save the vote
-        vote = Vote(content_object=self, 
-                    voter=user,
-                    type_of_vote=type_of_vote)
-        vote.save()
-        score_delta = 0
-        # Next, update our denormalized columns
-        if type_of_vote == FLAG:
-            self.flags = F('flags') + 1
-        elif type_of_vote == UPVOTE:
-            self.upvotes = F('upvotes') + 1
-            score_delta = 1
-        elif type_of_vote == DOWNVOTE:
-            self.downvotes = F('downvotes') + 1
-            score_delta = -1
+        # If this user had previously reacted on this post, then "undo" the reaction by deleting it
+        num_rows, _ = Reaction.objects.filter(post=self, author=user, reaction=reaction_emoji).delete()
+        if num_rows > 0:
+            # The user had previously reacted on this post..
+            score_delta = score_delta * -1
         else:
-            raise Exception("Invalid type of vote " + type_of_vote)
-        self.save(update_fields=["upvotes", "downvotes", "flags"])
+            Reaction.objects.create(post=self, author=user, reaction=reaction_emoji)
+        
+        # This does have a race condition, but it is fine for now.
+        if reaction_emoji in self.reaction_summary:
+            self.reaction_summary[reaction_emoji] += score_delta
+        else:
+            self.reaction_summary[reaction_emoji] = score_delta
+        self.save(update_fields=["reaction_summary"])
 
         # Increment/Decrement the score of author
         self.author.score = F('score') + score_delta
         self.author.save(update_fields=["score"])
 
+        self.refresh_from_db(fields=['reaction_summary'])
+        return self.reaction_summary[reaction_emoji]
+
     def _voting_for_myself(self, user):
         return self.author.id == user.id
-
-    def _already_voted(self, user, content_type, type_of_vote):
-        return Vote.objects.filter(
-            content_type=content_type.id,
-            object_id=self.id,\
-            voter=user, type_of_vote=type_of_vote)\
-            .exists()
 
     def save(self, *args, **kwargs):
         self.html = clean_and_normalize_html(self.html)
@@ -545,9 +522,6 @@ class Post(models.Model):
         if not self.pk:
             is_create = True
         super().save(*args, **kwargs)  # Call the "real" save() method.
-
-    def get_absolute_url(self):
-        return "/discuss/%i/" % self.id
 
     def edit_post(self, title, html, author):
         self.title = title

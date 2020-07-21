@@ -274,33 +274,15 @@ class EditPostView(LoginRequiredMixin, View):
 @require_http_methods(['POST'])
 def upvote_post(request, post_id):
     post = get_object_or_404_check_acl(Post, pk=post_id, requester=request.user)
-    post.upvote(request.user)
-    post.refresh_from_db()
-    return HttpResponse(post.upvotes)
+    upvotes = post.upvote(request.user)
+    return HttpResponse(upvotes)
 
 @login_required
 @require_http_methods(['POST'])
 def downvote_post(request, post_id):
     post = get_object_or_404_check_acl(Post, pk=post_id, requester=request.user)
-    post.downvote(request.user)
-    post.refresh_from_db()
-    return HttpResponse(post.downvotes)
-
-@login_required
-@require_http_methods(['POST'])
-def upvote_comment(request, comment_id):
-    comment = get_object_or_404_check_acl(Comment, pk=comment_id, requester=request.user)
-    comment.upvote(request.user)
-    comment.refresh_from_db()
-    return HttpResponse(comment.upvotes)
-
-@login_required
-@require_http_methods(['POST'])
-def downvote_comment(request, comment_id):
-    comment = get_object_or_404_check_acl(Comment, pk=comment_id, requester=request.user)
-    comment.downvote(request.user)
-    comment.refresh_from_db()
-    return HttpResponse(comment.downvotes)
+    downvotes = post.downvote(request.user)
+    return HttpResponse(downvotes)
 
 @login_required
 @require_http_methods(['POST'])
