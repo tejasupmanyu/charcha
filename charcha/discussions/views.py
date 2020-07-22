@@ -311,7 +311,7 @@ def myprofile(request):
 @login_required
 def profile(request, userid):
     user = get_object_or_404(User, pk=userid)
-    return render(request, "profile.html", context={"user": user })
+    return render(request, "profile.html", context={"user": user, 'timezones': pytz.common_timezones })
 
 class FileUploadView(LoginRequiredMixin, View):
     def post(self, request, **kwargs):
