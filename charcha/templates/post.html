@@ -44,12 +44,12 @@
           {% if post.author.avatar %}
           <img width="40" src="{{post.author.avatar}}" class="rounded-circle mr-3"/>
           {% else %}
-          <img width="40" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
+          <img width="30" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
           {% endif %}
         </div>
         <div class="text-muted d-flex ">
           <a class="author" href="{% url 'profile' post.author.id %}">{{ post.author.first_name }} {{ post.author.last_name }}</a>
-          <span>, {{post.author.designation}}</span>
+          <span class="d-none d-md-block">, {{post.author.designation}}</span>
         </div>
         
         <small class="text-muted ml-auto">  
@@ -127,13 +127,17 @@
   {% for childpost in child_posts %}
   <div id="post-{{childpost.id}}" class="mb-3 rounded card post {% if childpost.is_read %} read {% else %} unread {% endif %} {% if childpost.has_unread_children %} has-unread-children {% endif %}">
     <div class="card-header d-flex align-items-start justify-content-between text-muted ">
-      <div>
+      <div class="d-flex">
         {% if childpost.author.avatar %}
           <img width="40" src="{{childpost.author.avatar}}" class="rounded-circle mr-3"/>
         {% else %}
-          <img width="40" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
+          <img width="30" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
         {% endif %}
-        <a class="pr-2" href="{% url 'profile' childpost.author.id %}">{{ childpost.author.first_name }} {{ childpost.author.last_name }}</a>
+        <div class="d-flex">
+          <a class="author" href="{% url 'profile' childpost.author.id %}">{{ childpost.author.first_name }} {{ childpost.author.last_name }}</a>
+          <span class="d-none d-md-block">, {{childpost.author.designation}}</span>
+        </div>
+        
       </div>
       <div>
         <small class="px-2">{{ childpost.submission_time | naturaltime }}</small>
@@ -292,7 +296,7 @@
     </div>
   </div>
   {% for tag in post.tags.all %}
-  <div class="sidebar mt-3 pb-3 border-bottom">
+  <div class="sidebar mt-3 pb-3 border-bottom d-none d-md-block">
     {% if tag.ext_link %}
     <a href="{{tag.ext_link}}" target="hubspot">
       <h4>{{tag.name}} 
