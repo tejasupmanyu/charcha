@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 
-from .models import GchatSpace, GchatUser, GroupGchatSpace
+from .models import GchatSpace, GroupGchatSpace
 from .models import Group, Role, Permission, GroupMember
 from .models import Post, Comment, Reaction, LastSeenOnPost
 from .models import Favourite
@@ -17,7 +17,7 @@ class LastSeenOnPostAdmin(admin.ModelAdmin):
     readonly_fields = ('seen', )
 
 class GchatSpaceAdmin(admin.ModelAdmin):
-    fields = ('name', 'space')
+    fields = ('name', 'space', 'is_deleted')
 
 class PermissionAdmin(admin.ModelAdmin):
     fields = ('name', 'description',)
@@ -48,7 +48,7 @@ class GroupAdmin(admin.ModelAdmin):
     inlines = (GroupGchatSpaceInline, GroupMemberInline,)
     
 class UserAdmin(admin.ModelAdmin):
-    fields = ('username', 'gchat_space', 'score', 'email', 'is_active', 'is_staff')
+    fields = ('username', 'gchat_space', 'gchat_primary_key', 'score', 'email', 'is_active', 'is_staff')
     readonly_fields = ('username', )
 
 class PostAdmin(admin.ModelAdmin):

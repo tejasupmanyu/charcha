@@ -62,40 +62,6 @@ def save_avatar(backend, strategy, details, response, user=None, *args, **kwargs
         user.avatar = url
         user.save()
 
-def associate_gchat_user(backend, strategy, details, response, user=None, *args, **kwargs):
-    '''Called as part of social authentication login process
-        We try to match the user logging in to an existing gchat user
-    '''
-    from django.db import connection
-    with connection.cursor() as cursor:
-        try:
-            cursor.execute("""
-                WITH user_with_merge_key as (
-                    SELECT u.id as id, u.email, replace(substring(u.email, 0, position('@' in u.email)), '.', '') as merge_key 
-                    FROM users u JOIN social_auth_usersocialauth sa on u.id = sa.user_id
-                    WHERE u.email != ''
-                )
-                UPDATE gchat_users g
-                SET user_id = um.id
-                FROM user_with_merge_key um 
-                WHERE replace(lower(g.display_name), ' ', '') = um.merge_key
-                AND g.user_id is null AND um.id = %s;
-            """, [user.id])
-        except IntegrityError:
-            # Because we are matching on name, it is possible different users have the same name
-            # So if we update multiple records in gchat_users table, something is wrong
-            # In such a case, we simply don't update the database, but let the user login
-            pass
-
-def update_gchat_space(email, space_id):
-    try:
-        user = User.objects.get(email=email)
-        user.gchat_space = space_id
-        user.save()
-        return True
-    except User.DoesNotExist as e:
-        return False
-
 class User(AbstractUser):
     """Our custom user model with a score"""
     class Meta:
@@ -108,52 +74,20 @@ class User(AbstractUser):
     employee_id = models.CharField(max_length=4, default=None, null=True)
     joining_date = models.DateField(null=True, default=None)
     
+    # This field maps a charcha user to a google hangouts user
+    gchat_primary_key = models.CharField(max_length=100, default=None, null=True)
+    
     # If the user has added charcha bot, then this field stores the unique space id
     gchat_space = models.CharField(max_length=50, default=None, null=True)
     tzname = models.CharField(max_length=50, default='Asia/Kolkata')
 
-class GchatUser(models.Model):
-    '''
-    A user imported from google chat
-    
-    Where possible, the gchat user is associated to a charcha user. 
-    Ideally, google chat users should be the same as charcha users, but there are some challenges
-
-    1. Google Hangouts API does not expose email, it only provides a display name. 
-        So we have to use the display name to try and match to users within Charcha
-        This matching is obviously not fool-proof. 
-    2. Google Hangouts only exposes current employees. Charcha may have users that are no longer employees.
-        In this case, ideally we should deactivate the corresponding charcha user, if possible.
-    3. Charcha can create users using django's password based authentication. 
-        These users were allowed in the past, but no are longer supported.
-        Another use case is charcha admin users - which are not necessarily gchat users
-    
-    So charcha users and gchat users are two sets, with a significant overlap - 
-    but they are not subsets of each other
-
-    The important thing is to map the users wherever possible. 
-    The teams functionality depends on this mapping being accurate
-    '''
-    class Meta:
-        db_table = "gchat_users"
-        indexes = [
-            models.Index(fields=["key",]),
-        ]
-        constraints = [
-            models.UniqueConstraint(fields=['key',], name="gchat_user_unique_key")
-        ]
-    
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, default=None, related_name="gchat_user")
-    # Maps to name in google hangout's model
-    # See https://developers.google.com/hangouts/chat/reference/rest/v1/User
-    key = models.CharField(max_length=100)
-    display_name = models.CharField(max_length=100)
-
 class GchatSpace(models.Model):
     class Meta:
         db_table = "gchat_spaces"
+
     name = models.CharField(max_length=100)
     space = models.CharField(max_length=50)
+    is_deleted = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name

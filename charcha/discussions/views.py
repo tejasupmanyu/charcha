@@ -26,8 +26,7 @@ from django.core.files.storage import DefaultStorage
 from django.core.exceptions import PermissionDenied
 
 from .models import Post, Comment, Reaction, User, Group, LastSeenOnPost, PostSubscribtion, Tag
-from .models import update_gchat_space
-
+from .models import GchatSpace
 
 def get_object_or_404_check_acl(klass, requester, *args, **kwargs):
     'Similar to get_object_or_404, but checks that the user has access to the object that is requested'
@@ -344,3 +343,57 @@ class FileUploadView(LoginRequiredMixin, View):
             'message': 'OK',
             'fileUrl': file_url,
         })
+
+@require_http_methods(['POST'])
+@csrf_exempt
+def google_chatbot(request):
+    event = json.loads(request.body)
+    text = None
+    if event['type'] == 'ADDED_TO_SPACE':
+        if event['space']['type'] == 'DM':
+            space_id = event['space']['name']
+            email = event['user']['email']
+            gchat_user_pk = event['user']['name']
+            
+            user_exists = User.objects.filter(email=email).update(gchat_primary_key=gchat_user_pk, gchat_space=space_id)
+            
+            if user_exists:
+                text = "From now on, I will notify you of any updates in the discussions you participate."
+            else:
+                text = """You haven't logged in to charcha yet. Please do the following:
+                    1. Remove charcha bot 
+                    2. Go to https://charcha.hashedin.com and login with your @hashedin.com email address
+                    3. Then come back and add charcha bot once again
+                    """
+        elif event['space']['type'] == 'ROOM':
+            space = event['space']['name']
+            # room name can be None for DMs between multiple people
+            room_name = event['space'].get('displayName', None)
+            if not room_name:
+                text = "Sorry, group messages are not supported in Charcha"
+            else:
+                GchatSpace.objects.update_or_create(space=space, defaults={"name": room_name, "is_deleted": False})
+                text = "I have added this room to Charcha, but you will have to create a new Group in Charcha and associate it with this room."
+
+    elif event['type'] == 'REMOVED_FROM_SPACE':
+        if event['space']['type'] == 'DM':
+            email = event['user']['email']
+            User.objects.filter(email=email).update(gchat_space=None)
+        elif event['space']['type'] == 'ROOM':
+            space = event['space']['name']
+            GchatSpace.objects.filter(space=space).update(is_deleted=True)
+    elif event['type'] == 'MESSAGE':
+        if event['space']['type'] == 'DM':
+            text = "This is a one way street. I will completely ignore anything you type."
+        elif event['space']['type'] == 'ROOM':
+            # if 'synchronize' in event['message']['argumentText']:
+            #     space = event['space']['name']
+            #     sync_group(space, room_name)
+            #     text = "Done, I have synchronized team members with Charcha"
+            # else:
+            #    text = "Sorry, I don't understand your message. Try @charcha synchronize"
+            text = "Synchronize is temporarily disabled"
+    if text:
+        return JsonResponse({"text": text})
+    else:
+        return HttpResponse("OK")
