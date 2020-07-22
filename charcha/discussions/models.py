@@ -427,7 +427,9 @@ class Post(models.Model):
     last_modified = models.DateTimeField(auto_now=True)
 
     # activity includes new sub-post, new comment, or edits to sub-post / comment
-    last_activity = models.DateTimeField(null=True, blank=True)
+    # we use auto_now_add because there are times we want to update the post without updating last_activity
+    # for example, when posts are upvoted / downvoted, we don't want to update last_activity
+    last_activity = models.DateTimeField(auto_now_add=True)
 
     parent_post = models.ForeignKey(
         'self', 

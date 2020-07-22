@@ -63,15 +63,15 @@ nav a.active {
   background-color: #eeeeee;
 }
 
-.original-post {
-  background-color: #f5f5f5;
-}
 .post .card-header {
   background-color: inherit;
   
 }
 .post-list a, .text-muted a {
   color: inherit;
+}
+.author {
+  font-weight: bold;
 }
 .post-list .post-metadata {
   font-size: inherit;
