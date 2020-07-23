@@ -10,7 +10,7 @@ from .models import User, Tag
 class PostSubscribtionAdmin(admin.ModelAdmin):
     fields=('post', 'user', 'notify_on')
     list_display=('post', 'user', 'notify_on')
-    
+
 class TagAdmin(admin.ModelAdmin):
     fields = ('name', 'parent', 'ext_id', 'attributes', 'ext_link')
     list_display = ('name', 'parent', 'ext_id', 'is_visible', 'attributes', 'ext_link')
@@ -52,7 +52,7 @@ class GroupAdmin(admin.ModelAdmin):
     inlines = (GroupGchatSpaceInline, GroupMemberInline,)
     
 class UserAdmin(admin.ModelAdmin):
-    fields = ('username', 'gchat_space', 'gchat_primary_key', 'score', 'email', 'is_active', 'is_staff')
+    fields = ('username', 'first_name', 'last_name', 'gchat_space', 'gchat_primary_key', 'score', 'email', 'is_active', 'is_staff')
     readonly_fields = ('username', )
 
 class PostAdmin(admin.ModelAdmin):

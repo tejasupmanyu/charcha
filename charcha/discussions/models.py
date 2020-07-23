@@ -144,6 +144,8 @@ class Group(models.Model):
         post.save()
 
         self._send_new_post_notifications(post)
+        PostSubscribtion.objects.subscribe(post, author, PostSubscribtion.NEW_POSTS_AND_REPLIES_ONLY)
+
         return post
 
     def recent_tags(self, period=30):
@@ -413,6 +415,7 @@ class Post(models.Model):
         self.save(update_fields=["last_activity"])
 
         self._send_new_child_post_notifications(post)
+        PostSubscribtion.objects.subscribe(self, author, PostSubscribtion.REPLIES_ONLY)
         return post
 
     def _send_new_child_post_notifications(self, post):
@@ -535,14 +538,16 @@ class Post(models.Model):
             self.parent_post.last_activity = now
             self.parent_post.save(update_fields=["last_activity"])
 
-        self._send_notifications_on_new_comment(comment)
-        return comment
-
-    def _send_notifications_on_new_comment(self, comment):
         if self.parent_post:
             parent_post = self.parent_post
         else:
-            parent_post = self    
+            parent_post = self
+
+        self._send_notifications_on_new_comment(parent_post, comment)
+        PostSubscribtion.objects.subscribe(parent_post, author, PostSubscribtion.REPLIES_ONLY)
+        return comment
+
+    def _send_notifications_on_new_comment(self, parent_post, comment):
         event = {
             "heading": "New Comment",
             "sub_heading": "by " + comment.author.username,
