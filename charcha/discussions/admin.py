@@ -4,9 +4,13 @@ from django.contrib.contenttypes.admin import GenericTabularInline
 from .models import GchatSpace, GroupGchatSpace
 from .models import Group, Role, Permission, GroupMember
 from .models import Post, Comment, Reaction, LastSeenOnPost
-from .models import Favourite
+from .models import Favourite, PostSubscribtion
 from .models import User, Tag
 
+class PostSubscribtionAdmin(admin.ModelAdmin):
+    fields=('post', 'user', 'notify_on')
+    list_display=('post', 'user', 'notify_on')
+    
 class TagAdmin(admin.ModelAdmin):
     fields = ('name', 'parent', 'ext_id', 'attributes', 'ext_link')
     list_display = ('name', 'parent', 'ext_id', 'is_visible', 'attributes', 'ext_link')
@@ -67,6 +71,7 @@ class ReactionAdmin(admin.ModelAdmin):
 class FavouriteAdmin(admin.ModelAdmin):
     pass
 
+admin.site.register(PostSubscribtion, PostSubscribtionAdmin)
 admin.site.register(Tag, TagAdmin)
 admin.site.register(LastSeenOnPost, LastSeenOnPostAdmin)
 admin.site.register(GchatSpace, GchatSpaceAdmin)

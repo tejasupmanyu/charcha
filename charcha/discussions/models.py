@@ -11,9 +11,9 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import F, Q, Prefetch, OuterRef, Subquery, Count
+from django.db.models import F, Q, Prefetch, OuterRef, Subquery, Count, Exists
 from django.urls import reverse
-from charcha.teams.bot import notify_space
+from .bot import notify_space
 from bleach.sanitizer import Cleaner
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -75,10 +75,10 @@ class User(AbstractUser):
     joining_date = models.DateField(null=True, default=None)
     
     # This field maps a charcha user to a google hangouts user
-    gchat_primary_key = models.CharField(max_length=100, default=None, null=True)
+    gchat_primary_key = models.CharField(max_length=100, default=None, blank=True, null=True)
     
     # If the user has added charcha bot, then this field stores the unique space id
-    gchat_space = models.CharField(max_length=50, default=None, null=True)
+    gchat_space = models.CharField(max_length=50, default=None, blank=True, null=True)
     tzname = models.CharField(max_length=50, default='Asia/Kolkata')
 
 class GchatSpace(models.Model):
@@ -94,7 +94,9 @@ class GchatSpace(models.Model):
 
 class GroupsManager(models.Manager):
     def for_user(self, user):
-        return Group.objects.filter(Q(members=user) | Q(group_type=Group.OPEN))
+        # Return a queryset that only returns groups the user has access to
+        return Group.objects\
+            .filter(Q(Exists(GroupMember.objects.only('id').filter(group=OuterRef('pk'), user=user))) | Q(group_type=Group.OPEN))
 
 class Group(models.Model):
     OPEN = 0
@@ -123,7 +125,7 @@ class Group(models.Model):
     @classmethod
     def get(klass, id, user):
         # Alternative get method to ensure user only sees Posts they have access to
-        return klass.objects.get(Q(members=user) | Q(group_type=Group.OPEN), pk=id)
+        return klass.objects.get(Q(Exists(GroupMember.objects.only('id').filter(group=OuterRef('pk'), user=user))) | Q(group_type=Group.OPEN), pk=id)
 
     def _slugify(self, title):
         slug = title.lower()
@@ -141,7 +143,7 @@ class Group(models.Model):
         post.last_modified = now
         post.save()
 
-        self._on_new_post(post)
+        self._send_new_post_notifications(post)
         return post
 
     def recent_tags(self, period=30):
@@ -152,7 +154,7 @@ class Group(models.Model):
             .order_by('-count')
         return list(tags_with_counts)
 
-    def _on_new_post(self, post):
+    def _send_new_post_notifications(self, post):
         event = {
             "heading": "New Discussion",
             "sub_heading": "by " + post.author.username,
@@ -162,9 +164,15 @@ class Group(models.Model):
             "link": SERVER_URL + reverse("post", args=[post.id, post.slug]),
             "link_title": "View Discussion"
         }
-        for gchat_space in self.gchat_spaces.all():
-            space_id = gchat_space.space
-            notify_space(space_id, event)
+
+        # If original post, then notify gchat spaces associated with this group
+        if post.parent_post:
+            raise Exception("Did not expect a child post to be created from a group!")
+    
+        for ggc in GroupGchatSpace.objects.filter(group=self).all():
+            if ggc.notify and not ggc.gchat_space.is_deleted:
+                space_id = ggc.gchat_space.space
+                notify_space(space_id, event)
 
     def __str__(self):
         return self.name
@@ -217,7 +225,7 @@ class GroupMember(models.Model):
 
 class PostsManager(models.Manager):
     def for_user(self, user):
-        return Post.objects.filter(Q(group__members=user) | Q(group__group_type=Group.OPEN))
+        return Post.objects.filter(Q(Exists(GroupMember.objects.only('id').filter(group=OuterRef('group'), user=user))) | Q(group__group_type=Group.OPEN))
 
     def get_post_details(self, post_id, user):
         parent_post = Post.objects\
@@ -282,7 +290,7 @@ class PostsManager(models.Manager):
             .select_related('group')\
             .annotate(lastseen_timestamp=Subquery(LastSeenOnPost.objects.filter(post=OuterRef('pk'), user=user).only('seen').values('seen')[:1]))\
             .filter(
-                Q(group__members=user) | Q(group__group_type=Group.OPEN), 
+                Q(Exists(GroupMember.objects.only('id').filter(group=OuterRef('group'), user=user))) | Q(group__group_type=Group.OPEN), 
                 parent_post=None
             )
         if group:
@@ -404,7 +412,46 @@ class Post(models.Model):
         self.last_activity = now
         self.save(update_fields=["last_activity"])
 
+        self._send_new_child_post_notifications(post)
         return post
+
+    def _send_new_child_post_notifications(self, post):
+        # Remember, self is the parent post
+        # post is the child post that newly got created
+
+        event = {
+            "heading": "New Response",
+            "sub_heading": "by " + post.author.username,
+            "image": post.author.avatar,
+            "line1": self.title,
+            "line2": post.html[:150],
+            "link": SERVER_URL + reverse("post", args=[self.id, self.slug]) + "#post-" + str(post.id),
+            "link_title": "View Response"
+        }
+
+        for subscription in PostSubscribtion.objects.filter(post=self).all():
+            # If user hasn't added charcha bot, skip notification
+            if not subscription.user.gchat_space:
+                continue
+
+            # Don't send notifications to the author
+            if subscription.user == post.author:
+                continue
+
+            send_notification = False
+
+            # Send notification to users who have subscribed to all notifications or new posts
+            if subscription.notify_on in (PostSubscribtion.ALL_NOTIFICATIONS, PostSubscribtion.NEW_POSTS_AND_REPLIES_ONLY):
+                send_notification = True
+            # If user preference is REPLIES_ONLY, then check if this user is the author of the parent post
+            elif subscription.notify_on in (PostSubscribtion.REPLIES_ONLY, ):
+                if subscription.user == self.author:
+                    send_notification = True
+            
+            if send_notification:
+                space_id = subscription.user.gchat_space
+                notify_space(space_id, event)
+
 
     def upvote(self, user):
         return self.react(user, '👍')
@@ -488,10 +535,46 @@ class Post(models.Model):
             self.parent_post.last_activity = now
             self.parent_post.save(update_fields=["last_activity"])
 
+        self._send_notifications_on_new_comment(comment)
         return comment
 
-    def watchers(self):
-        return []
+    def _send_notifications_on_new_comment(self, comment):
+        if self.parent_post:
+            parent_post = self.parent_post
+        else:
+            parent_post = self    
+        event = {
+            "heading": "New Comment",
+            "sub_heading": "by " + comment.author.username,
+            "image": comment.author.avatar,
+            "line1": parent_post.title,
+            "line2": comment.html[:150],
+            "link": SERVER_URL + reverse("post", args=[parent_post.id, parent_post.slug]) + "#comment-" + str(comment.id),
+            "link_title": "View Comment"
+        }
+        
+        for subscription in PostSubscribtion.objects.filter(post=parent_post).all():
+            # If user hasn't added charcha bot, skip notification
+            if not subscription.user.gchat_space:
+                continue
+
+            # Don't send notifications to the author
+            if subscription.user == comment.author:
+                continue
+
+            send_notification = False
+
+            # Send notification to users who have subscribed to all notifications or new posts
+            if subscription.notify_on in (PostSubscribtion.ALL_NOTIFICATIONS, ):
+                send_notification = True
+            # If user preference is REPLIES_ONLY, then check if this user is the author of the post to which this comment is being added
+            elif subscription.notify_on in (PostSubscribtion.REPLIES_ONLY, PostSubscribtion.NEW_POSTS_AND_REPLIES_ONLY):
+                if subscription.user == self.author:
+                    send_notification = True
+            
+            if send_notification:
+                space_id = subscription.user.gchat_space
+                notify_space(space_id, event)
 
     def __str__(self):
         if self.title:
@@ -524,7 +607,7 @@ class PostMembers(models.Model):
 
 class CommentsManager(models.Manager):
     def for_user(self, user):
-        return Comment.objects.filter(Q(post__group__members=user) | Q(post__group__group_type=Group.OPEN))
+        return Comment.objects.filter(Q(Exists(GroupMember.objects.only('id').filter(group=OuterRef('post__group'), user=user))) | Q(post__group__group_type=Group.OPEN))
 
 class Comment(models.Model):
     class Meta:
@@ -556,22 +639,6 @@ class Comment(models.Model):
             self.post.parent_post.save(update_fields=["last_activity"])
 
         return self
-
-    def on_new_comment(self):
-        event = {
-            "heading": "New Comment",
-            "sub_heading": "by " + self.author.username,
-            "image": self.author.avatar,
-            "line1": self.post.title,
-            "line2": self.html[:150],
-            "link": SERVER_URL + reverse("discussion", args=[self.post.id]) + "#comment-" + str(self.id),
-            "link_title": "View Comment"
-        }
-        
-        for watcher in self.post.watchers():
-            if watcher.username == self.author.username:
-                continue
-            notify_space(watcher.gchat_space, event)
 
     def __str__(self):
         return self.html

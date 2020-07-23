@@ -1,4 +1,3 @@
-from django.db import models
 from django.conf import settings
 import json
 import os
@@ -49,7 +48,7 @@ def notify_space(spaceid, event):
       logger.exception("Cannot send message to space " + spaceid)
 
 def _create_message(event):
-    return {
+    message = {
       "cards":[
         {
           "header":{
@@ -99,5 +98,9 @@ def _create_message(event):
         }
       ]
     }
+    # if not event['line1']:
+    #   message['cards'][1]['sections'][0]['widgets'].pop()
+    
+    return message
 
 
