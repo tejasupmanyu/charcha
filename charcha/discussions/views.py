@@ -24,6 +24,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import DefaultStorage
 from django.core.exceptions import PermissionDenied
+from django.views.decorators.cache import cache_control
 
 from .models import Post, Comment, Reaction, User, Group, LastSeenOnPost, PostSubscribtion, Tag
 from .models import GchatSpace
@@ -135,7 +136,8 @@ class AddEditComment(LoginRequiredMixin, View):
 class NewPostForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['tags'].queryset = Tag.objects.filter(is_visible=True).all()
+        if 'tags' in self.fields:
+            self.fields['tags'].queryset = Tag.objects.filter(is_visible=True).all()
 
     class Meta:
         model = Post
@@ -311,6 +313,12 @@ def myprofile(request):
 def profile(request, userid):
     user = get_object_or_404(User, pk=userid)
     return render(request, "profile.html", context={"user": user, 'timezones': pytz.common_timezones })
+
+@login_required
+@cache_control(private=True, max_age=3600)
+def get_users(request):
+    users = User.objects.only("username", "id").all()
+    return JsonResponse([{"username": x.username, "id": x.id} for x in users], safe=False)
 
 class FileUploadView(LoginRequiredMixin, View):
     def post(self, request, **kwargs):

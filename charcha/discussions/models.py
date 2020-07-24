@@ -21,10 +21,11 @@ from django.db import transaction
 import re
 
 comment_cleaner = Cleaner(
-    tags=['a', 'b', 'em', 'i', 'strong',
+    tags=['a', 'b', 'em', 'i', 'strong', 'span'
     ],
     attributes={
         "a": ("href", "name", "target", "title", "id", "rel", "data-trix-attachment",),
+        "span": ("data-user-id", "class"),
     },
     strip=True
 )
@@ -38,7 +39,7 @@ cleaner = Cleaner(
             "figure": ("class", "data-trix-attachment", "data-trix-content-type", "data-trix-attributes"),
             "figcaption": ("class", ),
             "img": ("width", "height", 'src'),
-            "span": ("class", ),
+            "span": ("class", "data-user-id"),
         },
     strip=False
 )
@@ -48,6 +49,72 @@ def clean_and_normalize_html(html):
     html = cleaner.clean(html)
     return re.sub(regex, r"<h3>\1</h3>", html)
 
+def extract_mentions(html, exclude=None):
+    """
+    :param html: normalized html text
+    :param exclude: list of user ids to exclude
+    :return: User list of mentions
+    """
+    if not exclude:
+        exclude = []
+
+    regex = r'data-user-id="(\d+)">'
+    matches = re.finditer(regex, html, re.MULTILINE | re.IGNORECASE)
+    mentions = set()
+    for match in matches:
+        for group in match.groups():
+            mentions.add(group)
+    users = User.objects.filter(id__in=mentions).exclude(id__in=exclude)
+    return users
+
+def send_notification_on_mentions(post_or_comment):
+    '''Notifies users if they were mentioned in the post or comment. 
+    Returns a set of user ids that were notified
+    This can be used to prevent duplicate notifications for the same event
+    '''
+    users = extract_mentions(post_or_comment.html)
+    print("Mentions - ", users)
+    if not users:
+        return {}
+    
+    pc = post_or_comment
+    is_comment = False
+    is_child_post = False
+
+    if hasattr(pc, 'post'):
+        is_comment = True
+        post = pc.post
+    else:
+        post = pc
+
+    if post.parent_post:
+        is_child_post = True
+        parent_post = post.parent_post
+    else:
+        parent_post = post
+    
+    url_suffix = ""
+    if is_comment:
+        url_suffix = "#comment-" + str(pc.id)
+    elif is_child_post:
+        url_suffix = "#post-" + str(pc.id)
+
+    event = {
+        "heading": "You were mentioned",
+        "sub_heading": "by " + pc.author.username,
+        "image": pc.author.avatar,
+        "line1": parent_post.title,
+        "line2": pc.html,
+        "link": SERVER_URL + reverse("post", args=[parent_post.id, parent_post.slug]) + url_suffix,
+        "link_title": "Open"
+    }
+    
+    # actually notify the users
+    for user in users:
+        notify_space(user.gchat_space, event)
+    
+    # return the set of users that were notified
+    return set([u.id for u in users])
 
 # TODO: Read this from settings 
 SERVER_URL = "https://charcha.hashedin.com"
@@ -157,12 +224,13 @@ class Group(models.Model):
         return list(tags_with_counts)
 
     def _send_new_post_notifications(self, post):
+        send_notification_on_mentions(post)
         event = {
             "heading": "New Discussion",
             "sub_heading": "by " + post.author.username,
             "image": post.author.avatar,
             "line1": post.title,
-            "line2": post.html[:150],
+            "line2": post.html,
             "link": SERVER_URL + reverse("post", args=[post.id, post.slug]),
             "link_title": "View Discussion"
         }
@@ -419,6 +487,8 @@ class Post(models.Model):
         return post
 
     def _send_new_child_post_notifications(self, post):
+        already_notified_users = send_notification_on_mentions(post)
+
         # Remember, self is the parent post
         # post is the child post that newly got created
 
@@ -427,7 +497,7 @@ class Post(models.Model):
             "sub_heading": "by " + post.author.username,
             "image": post.author.avatar,
             "line1": self.title,
-            "line2": post.html[:150],
+            "line2": post.html,
             "link": SERVER_URL + reverse("post", args=[self.id, self.slug]) + "#post-" + str(post.id),
             "link_title": "View Response"
         }
@@ -435,6 +505,11 @@ class Post(models.Model):
         for subscription in PostSubscribtion.objects.filter(post=self).all():
             # If user hasn't added charcha bot, skip notification
             if not subscription.user.gchat_space:
+                continue
+            
+            # If users have a @mention in the post, they would have already received a notification
+            # So do not send another notification
+            if subscription.user.id in already_notified_users:
                 continue
 
             # Don't send notifications to the author
@@ -548,12 +623,13 @@ class Post(models.Model):
         return comment
 
     def _send_notifications_on_new_comment(self, parent_post, comment):
+        already_notified_users = send_notification_on_mentions(comment)
         event = {
             "heading": "New Comment",
             "sub_heading": "by " + comment.author.username,
             "image": comment.author.avatar,
             "line1": parent_post.title,
-            "line2": comment.html[:150],
+            "line2": comment.html,
             "link": SERVER_URL + reverse("post", args=[parent_post.id, parent_post.slug]) + "#comment-" + str(comment.id),
             "link_title": "View Comment"
         }
@@ -561,6 +637,11 @@ class Post(models.Model):
         for subscription in PostSubscribtion.objects.filter(post=parent_post).all():
             # If user hasn't added charcha bot, skip notification
             if not subscription.user.gchat_space:
+                continue
+
+            # If users have a @mention in the comment, they would have already received a notification
+            # So do not send another notification
+            if subscription.user.id in already_notified_users:
                 continue
 
             # Don't send notifications to the author

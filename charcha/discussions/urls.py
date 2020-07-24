@@ -32,5 +32,6 @@ urlpatterns = [
     url(r'^api/posts/(?P<post_id>\d+)/lastseenat/$', views.update_post_last_seen_at, name="update-last-seen-at"),
 
     url(r'^api/upload$', views.FileUploadView.as_view(), name="upload-files"),
+    url(r'^api/users$', views.get_users, name="search_users"),
     url(r'^chatbot', views.google_chatbot, name="Webhook for google chatbot"),
 ]
