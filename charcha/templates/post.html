@@ -52,8 +52,11 @@
           <span class="d-none d-md-block">, {{post.author.designation}}</span>
         </div>
         
-        <small class="text-muted ml-auto">  
+        <small class="text-muted ml-auto">
             {{ post.submission_time | naturaltime }}
+            {% if not post.is_read %}
+            <span class="unread-indicator ml-2"></span>
+            {% endif %}
         </small>
       </div>
     </div>
@@ -84,11 +87,11 @@
         {% if post.comments.all|length > 0 %}
         <ol class="border-top ml-3 list-unstyled">
           {% for comment in post.comments.all %}
-          <li id="comment-{{comment.id}}" class="py-2 border-bottom {% if comment.is_read %} read {% else %} unread {% endif %}">
+          <li id="comment-{{comment.id}}" style="position: relative;" class="py-2 border-bottom {% if comment.is_read %} read {% else %} unread {% endif %}">
             <small>
               <div>
               {{comment.html | safe}}
-               – 
+               –&nbsp;
               <span class="text-muted">
                 <a href="{% url 'profile' comment.author.id %}">{{ comment.author.first_name }} {{comment.author.last_name}}</a>
                 {{comment.submission_time }}
@@ -103,6 +106,9 @@
               </span>
               </div>
             </small>
+            {% if not comment.is_read %}
+              <span style="position: absolute; right:-5px; top:0.75em" class="unread-indicator"></span>  
+            {% endif %}
           </li>
           {% endfor %}
           <li class="py-2">
@@ -140,7 +146,9 @@
         
       </div>
       <div>
-        <small class="px-2">{{ childpost.submission_time | naturaltime }}</small>
+        <small class="px-2">
+          {{ childpost.submission_time | naturaltime }}
+        </small>
         <a href="#post-{{childpost.id}}">
           <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-link-45deg" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
             <path d="M4.715 6.542L3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.001 1.001 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
@@ -149,6 +157,9 @@
             <path d="M10 9.5a2.99 2.99 0 0 0 .288-1.46l-.167.167a1.99 1.99 0 0 1-.896.518 1.99 1.99 0 0 1-.518.896l-.167.167A3.004 3.004 0 0 0 10 9.501z"/>
           </svg>
         </a>
+        {% if not childpost.is_read %}
+          <span class="unread-indicator ml-2"></span>
+        {% endif %}
       </div>
     </div>
     <div class="card-body pb-1">
@@ -182,11 +193,11 @@
         {% if childpost.comments.all|length > 0 %}
         <ol class="border-top ml-3 list-unstyled">
           {% for comment in childpost.comments.all %}
-          <li id="comment-{{comment.id}}" class="py-2 border-bottom {% if comment.is_read %} read {% else %} unread {% endif %}">
+          <li id="comment-{{comment.id}}" style="position: relative;" class="py-2 border-bottom {% if comment.is_read %} read {% else %} unread {% endif %}">
             <small>
               <div>
               {{comment.html | safe}}
-               – 
+               –&nbsp;
               <span class="text-muted">
                 <a href="{% url 'profile' comment.author.id %}">{{ comment.author.first_name }} {{comment.author.last_name}}</a>
                 {{comment.submission_time }}
@@ -201,6 +212,9 @@
               </span>
               </div>
             </small>
+            {% if not comment.is_read %}
+              <span style="position: absolute; right:-5px; top:0.75em" class="unread-indicator"></span>  
+            {% endif %}
           </li>
           {% endfor %}
           <li class="py-2">

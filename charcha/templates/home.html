@@ -48,7 +48,7 @@
     {% endif %}
     
   </div>
-  <div class="d-flex">
+  <div class="d-flex mb-3">
     <div class="d-flex ml-auto">
       <span class="">Sort by:</span>
       <nav class="nav">
@@ -59,7 +59,7 @@
   </div>
   <div class="post-list">
   {% for post in posts %}
-  <div class="media post mb-2 {% if post.is_read %} read {% else %} unread {% endif %}">
+  <div class="media post mb-2">
     {% if post.author.avatar %}
       <img width="40" src="{{post.author.avatar}}" class="rounded-circle mr-3"/>
     {% else %}
@@ -84,6 +84,9 @@
       </small>
     </h3>
     </div>
+    {% if not post.is_read %}
+    <span class="mt-2 unread-indicator"></span>
+    {% endif %}
   </div>
   {% endfor %}
   </div>
