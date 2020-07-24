@@ -5,8 +5,19 @@ import logging
 from httplib2 import Http
 from oauth2client.service_account import ServiceAccountCredentials
 from apiclient.discovery import build
+from bleach.sanitizer import Cleaner
 
 logger = logging.getLogger(__name__)
+
+# A restricted cleaner to strip html tags before posting to google chat
+cleaner = Cleaner(
+    tags=['a', 'b', 'em', 'i', 'strong',
+    ],
+    attributes={
+        "a": ("href",),
+    },
+    strip=True
+)
 
 def _load_chat_client():
     keyfile_str = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON', None)
@@ -48,6 +59,9 @@ def notify_space(spaceid, event):
       logger.exception("Cannot send message to space " + spaceid)
 
 def _create_message(event):
+    # Strip html tags that google chat does not render
+    # and then restrict the content to just 150 characters
+    line2 = cleaner.clean(event['line2'])[:150]
     message = {
       "cards":[
         {
@@ -69,7 +83,7 @@ def _create_message(event):
                 },
                 {
                   "textParagraph":{
-                    "text": event["line2"]
+                    "text": line2
                   }
                 }
               ]
@@ -98,8 +112,6 @@ def _create_message(event):
         }
       ]
     }
-    # if not event['line1']:
-    #   message['cards'][1]['sections'][0]['widgets'].pop()
     
     return message
 
