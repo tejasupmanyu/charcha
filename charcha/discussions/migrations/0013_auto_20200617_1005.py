@@ -7,7 +7,6 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('teams', '0002_auto_20200618_0024'),
         ('discussions', '0012_auto_20200615_1126'),
     ]
 
@@ -19,7 +18,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='post',
             name='team',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.PROTECT, to='teams.Team'),
+            field=models.IntegerField(default=1),
         ),
         migrations.DeleteModel(
             name='Category',

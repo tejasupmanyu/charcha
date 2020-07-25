@@ -6,7 +6,6 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('teams', '0002_auto_20200618_0024'),
         ('discussions', '0013_auto_20200617_1005'),
     ]
 
@@ -16,12 +15,12 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('post', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='discussions.Post')),
-                ('team', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='teams.Team')),
+                ('team', models.IntegerField(default=1)),
             ],
         ),
-        migrations.AddField(
-            model_name='post',
-            name='teams',
-            field=models.ManyToManyField(related_name='posts', through='discussions.TeamPosts', to='teams.Team'),
-        ),
+        # migrations.AddField(
+        #     model_name='post',
+        #     name='teams',
+        #     field=models.ManyToManyField(related_name='posts', through='discussions.TeamPosts', to='teams.Team'),
+        # ),
     ]
