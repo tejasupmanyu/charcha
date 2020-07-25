@@ -1,5 +1,0 @@
-{% spaceless %}
-{% for t in teams %}
-    <a href="{% url 'team_home' t.id %}">{{t.name}}</a>{% if not forloop.last %},{% endif %}
-{% endfor %}
-{% endspaceless %}
