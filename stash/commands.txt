@@ -2,3 +2,5 @@ docker kill charcha-postgres
 docker container rm charcha-postgres
 docker run -d --name charcha-postgres -e POSTGRES_PASSWORD=charcha -v /home/sri/Downloads/e0f0ef71-719f-4329-babc-7ba53bdcb346:/data/backup -p5432:5432 postgres:12.3
 docker exec -it charcha-postgres pg_restore -U postgres -d postgres /data/backup
+
+docker exec -it charcha-postgres psql -U postgres

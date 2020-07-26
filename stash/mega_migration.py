@@ -1,8 +1,3 @@
-def print_msg(msg):
-    def inner(apps, schema_editor):
-        print(msg)
-    return inner
-
 def create_roles_and_permissions(apps, schema_editor):
     Role = apps.get_model("discussions", "Role")
     Permission = apps.get_model("discussions", "Permission")

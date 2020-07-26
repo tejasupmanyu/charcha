@@ -430,8 +430,8 @@ class Post(models.Model):
     
     objects = PostsManager()
     group = models.ForeignKey(Group, on_delete=models.PROTECT)
-    title = models.CharField(max_length=120, blank=True)
-    slug = models.CharField(max_length=120, blank=True)
+    title = models.CharField(max_length=120, blank=True, null=True)
+    slug = models.CharField(max_length=120, blank=True, null=True)
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     submission_time = models.DateTimeField(auto_now_add=True)
 
