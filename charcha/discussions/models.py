@@ -707,7 +707,7 @@ class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.PROTECT, related_name="comments")
     html = models.TextField(max_length=256)
     submission_time = models.DateTimeField(auto_now_add=True)
-    last_modified = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now=True)
     is_deleted = models.BooleanField(default=False)
     
     def save(self, *args, **kwargs):
