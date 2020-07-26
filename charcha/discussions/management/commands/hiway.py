@@ -9,6 +9,7 @@ from django.core.management.base import BaseCommand, CommandError
 from charcha.discussions.models import User, Tag
 import logging
 from django.utils import timezone
+from django.core.exceptions import MultipleObjectsReturned
 
 logger = logging.getLogger(__name__)
 METABASE_URL = "https://data.hashedin.com/api/card/<<ID>>/query"
@@ -39,6 +40,8 @@ class Command(BaseCommand):
         hiway_projects = get_projects(metabase_token)
         
         for hasher in hashers:
+            if not hasher.email:
+                continue
             try:
                 user = User.objects.get(email=hasher.email)
                 user.band = hasher.band
@@ -49,6 +52,9 @@ class Command(BaseCommand):
                 user.save()
             except User.DoesNotExist:
                 logger.warn("User with email " + hasher.email + " does not exist in charcha database")
+            except MultipleObjectsReturned:
+                logger.warn("Multiple entries with email" + hasher.email)
+
 
         for project in hiway_projects:
             is_visible = IS_PROJECT_STATE_VISIBLE[project.state]
@@ -61,7 +67,6 @@ class Command(BaseCommand):
                 parent = projects_tag,
                 defaults = {
                     'name': project.title,
-                    'ext_code': project.id,
                     'fqn': "Projects: " + project.title,
                     'is_external': True,
                     'is_visible': is_visible,
