@@ -4,7 +4,7 @@ def top_level_comments_to_posts(apps, schema_editor):
     Post = apps.get_model("discussions", "Post")
     Comment = apps.get_model("discussions", "Comment")
 
-    top_level_comments = Comment.objects.raw("select * from comments where length(wbs) = 5")
+    top_level_comments = Comment.objects.raw("select * from comments where length(wbs) = 5 or length(html) > 256")
     post_objs = []
     comment_objs = []
 
@@ -38,7 +38,7 @@ POINT_NESTED_COMMENTS_TO_NEWLY_CREATED_POST = """
     SET post_id = p.id
     FROM comments as parent_comment, posts as p
     WHERE child_comment.post_id = parent_comment.post_id
-    AND substring(child_comment.wbs, 1, 5) = parent_comment.wbs
+    AND substring(child_comment.wbs, 1, length(parent_comment.wbs)) = parent_comment.wbs
     AND length(child_comment.wbs) > 5
     AND parent_comment.id = p.temp_comment_id;
 """
