@@ -174,7 +174,7 @@ class Group(models.Model):
         db_table = "groups"
     
     objects = GroupsManager()
-    name = models.CharField(max_length=30, help_text="Name of the group")
+    name = models.CharField(max_length=100, help_text="Name of the group")
     group_type = models.IntegerField(
         choices = (
             (OPEN, 'Open'),
@@ -458,7 +458,7 @@ class Post(models.Model):
             (ANSWER, 'Answer'),
         ),
         default=DISCUSSION)
-    html = models.TextField(max_length=8192)
+    html = models.TextField(max_length=16384)
     is_deleted = models.BooleanField(default=False)
     sticky = models.BooleanField(default=False)
     accepted_answer = models.BooleanField(default=False)
@@ -619,7 +619,10 @@ class Post(models.Model):
             parent_post = self
 
         self._send_notifications_on_new_comment(parent_post, comment)
-        PostSubscribtion.objects.subscribe(parent_post, author, PostSubscribtion.REPLIES_ONLY)
+        
+        # Is it necessary to subscribe people who comment?
+        # Right now, we don't auto-subscribe people who just comment 
+        # PostSubscribtion.objects.subscribe(parent_post, author, PostSubscribtion.REPLIES_ONLY)
         return comment
 
     def _send_notifications_on_new_comment(self, parent_post, comment):
@@ -702,7 +705,7 @@ class Comment(models.Model):
     objects = CommentsManager()
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     post = models.ForeignKey(Post, on_delete=models.PROTECT, related_name="comments")
-    html = models.TextField(max_length=512)
+    html = models.TextField(max_length=256)
     submission_time = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now_add=True)
     is_deleted = models.BooleanField(default=False)
