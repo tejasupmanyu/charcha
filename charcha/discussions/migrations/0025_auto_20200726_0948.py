@@ -15,6 +15,14 @@ def create_roles_and_permissions(apps, schema_editor):
     member = Role.objects.create(name="member")
     guest = Role.objects.create(name="guest")
 
+SOFT_DELETE_ALL_PARENT_COMMENTS = """
+    UPDATE comments as c
+    SET is_deleted = true
+    WHERE exists (
+        SELECT 'x' FROM posts p where p.temp_comment_id = c.id
+    )
+"""
+
 UPDATE_GCHAT_KEY_IN_USER = """
     UPDATE users as u
     SET gchat_primary_key = gu.key
@@ -470,6 +478,7 @@ class Migration(migrations.Migration):
             name='vote',
             index_together=None,
         ),
+        migrations.RunSQL(SOFT_DELETE_ALL_PARENT_COMMENTS),
         migrations.RunPython(create_roles_and_permissions),
         migrations.RunSQL(UPDATE_GCHAT_KEY_IN_USER),
         migrations.RunSQL(MIGRATE_TEAMS_TO_GROUPS),

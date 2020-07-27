@@ -39,7 +39,6 @@ POINT_NESTED_COMMENTS_TO_NEWLY_CREATED_POST = """
     FROM comments as parent_comment, posts as p
     WHERE child_comment.post_id = parent_comment.post_id
     AND substring(child_comment.wbs, 1, length(parent_comment.wbs)) = parent_comment.wbs
-    AND length(child_comment.wbs) > 5
     AND parent_comment.id = p.temp_comment_id;
 """
 
@@ -47,14 +46,6 @@ COPY_VOTES_TO_NEW_POST = """
     INSERT INTO votes(object_id, type_of_vote, submission_time, content_type_id, voter_id)
     SELECT p.id, v.type_of_vote, v.submission_time, 8, v.voter_id 
     FROM votes v JOIN posts p on v.object_id = p.temp_comment_id and v.content_type_id = 7;
-"""
-
-SOFT_DELETE_ALL_PARENT_COMMENTS = """
-    UPDATE comments as c
-    SET post_id = 1
-    WHERE length(wbs) = 5 and exists (
-        SELECT 'x' FROM posts p where p.temp_comment_id = c.id
-    )
 """
 
 class Migration(migrations.Migration):
@@ -67,5 +58,4 @@ class Migration(migrations.Migration):
         migrations.RunSQL(COPY_SUBMISSION_TIME),
         migrations.RunSQL(POINT_NESTED_COMMENTS_TO_NEWLY_CREATED_POST),
         migrations.RunSQL(COPY_VOTES_TO_NEW_POST),
-        migrations.RunSQL(SOFT_DELETE_ALL_PARENT_COMMENTS),
     ]

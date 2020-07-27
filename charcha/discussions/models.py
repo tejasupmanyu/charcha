@@ -300,7 +300,7 @@ class PostsManager(models.Manager):
     def get_post_details(self, post_id, user):
         parent_post = Post.objects\
             .select_related("author")\
-            .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author").order_by('submission_time')))\
+            .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author").filter(is_deleted=False).order_by('submission_time')))\
             .select_related("group")\
             .prefetch_related("tags")\
             .annotate(lastseen_timestamp=Subquery(LastSeenOnPost.objects.filter(post=OuterRef('pk'), user=user).only('seen').values('seen')[:1]))\
@@ -309,7 +309,7 @@ class PostsManager(models.Manager):
         
         child_posts = list(Post.objects\
             .select_related("author")\
-            .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author").order_by('submission_time')))\
+            .prefetch_related(Prefetch("comments", queryset=Comment.objects.select_related("author").filter(is_deleted=False).order_by('submission_time')))\
             .annotate(lastseen_timestamp=Subquery(LastSeenOnPost.objects.filter(post=OuterRef('pk'), user=user).only('seen').values('seen')[:1]))\
             .filter(parent_post__id = post_id)\
             .order_by("submission_time"))
@@ -696,7 +696,9 @@ class PostMembers(models.Model):
 
 class CommentsManager(models.Manager):
     def for_user(self, user):
-        return Comment.objects.filter(Q(Exists(GroupMember.objects.only('id').filter(group=OuterRef('post__group'), user=user))) | Q(post__group__group_type=Group.OPEN))
+        return Comment.objects\
+            .filter(Q(Exists(GroupMember.objects.only('id').filter(group=OuterRef('post__group'), user=user))) | Q(post__group__group_type=Group.OPEN))\
+            .filter(is_deleted=False)
 
 class Comment(models.Model):
     class Meta:
