@@ -129,11 +129,18 @@ $('.upvote-button').click(function(){
       var anchor = $(e.target);
       var postId = anchor.data("post-id");
       var template = $("#reply-template").html();
-      var html = template.replace(new RegExp("<<post_id>>"), postId)
+      var html = template.replace(/<<post_id>>/gi, postId);
       var commentContainer = $('div[data-container="post-' + postId + '-comments"]').first();
       commentContainer.append(html);
       anchor.remove();
-      attachTribute();
+
+      var trixId = "trix-reply-to-" + postId
+      
+      // Add support for @mentions
+      attachTribute(trixId);
+
+      // Set the focus to the editor
+      $("#" + trixId).focus();
       return true;
     });
   });
@@ -265,13 +272,13 @@ function onMentionSelect(event) {
   editor.insertString(" ") // add an empty space to continue
 }
 
-function attachTribute() {
-  tribute.attach($('trix-editor'));
-  $('trix-editor').on('tribute-replaced', onMentionSelect);
+function attachTribute(uniqueId) {
+  tribute.attach($('#' + uniqueId));
+  $('#' + uniqueId).on('tribute-replaced', onMentionSelect);
   // fix for non-replacing issue in chrome. refer: https://github.com/basecamp/trix/issues/284#issuecomment-601286174
   tribute.range.pasteHtml = function(html, startPos, endPos) {}
 }
 $(document).ready(function() {
-  attachTribute();
+  attachTribute('trix-new-child-post');
   getUsers();
 });
