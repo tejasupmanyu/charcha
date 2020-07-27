@@ -28,6 +28,7 @@ from django.views.decorators.cache import cache_control
 
 from .models import Post, Comment, Reaction, User, Group, LastSeenOnPost, PostSubscribtion, Tag
 from .models import GchatSpace
+from .models import comment_cleaner
 
 def get_object_or_404_check_acl(klass, requester, *args, **kwargs):
     'Similar to get_object_or_404, but checks that the user has access to the object that is requested'
@@ -68,14 +69,29 @@ def set_user_timezone(request):
     
     return redirect(reverse('myprofile', args=[]))
 
+
+class HtmlFieldWithMentions(forms.CharField):
+    '''Field that cleans out the html before validations are performed
+    
+    @mentions create a lot of html markup which is ultimately stripped,
+    but they cause django forms to issue length validation errors
+    So this field strips out unwanted markup before the validator kicks in
+    '''
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def to_python(self, value):
+        value = super().to_python(value)
+        return comment_cleaner.clean(value)
+
 class CommentForm(forms.ModelForm):
+    html = HtmlFieldWithMentions(max_length=256, widget=forms.HiddenInput())
     class Meta:
         model = Comment
         fields = ['html']
         labels = {
             'html': 'Your Comment',
         }
-        widgets = {'html': forms.HiddenInput()}
 
 class PostView(LoginRequiredMixin, View):
     def get(self, request, post_id, slug=None):
