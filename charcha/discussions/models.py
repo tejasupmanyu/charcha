@@ -73,7 +73,6 @@ def send_notification_on_mentions(post_or_comment):
     This can be used to prevent duplicate notifications for the same event
     '''
     users = extract_mentions(post_or_comment.html)
-    print("Mentions - ", users)
     if not users:
         return {}
     
