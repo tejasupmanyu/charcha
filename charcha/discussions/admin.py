@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 
-from .models import GchatSpace, GroupGchatSpace
+from .models import GchatSpace
 from .models import Group, Role, Permission, GroupMember
 from .models import Post, Comment, Reaction, LastSeenOnPost
 from .models import Favourite, PostSubscribtion
@@ -39,17 +39,10 @@ class GroupMemberInline(admin.TabularInline):
     fields = ('user', 'role',)
     model = Group.members.through
 
-class GroupGchatSpaceInline(admin.StackedInline):
-    max_num = 3
-    extra = 1
-    description = "Associate google chat rooms to this group. Only rooms that have added the charcha chatbot will show up"
-    fields = ('gchat_space', 'sync_members', 'notify')
-    model = Group.gchat_spaces.through
-
 class GroupAdmin(admin.ModelAdmin):
-    fields = ('name', 'group_type', 'purpose', 'description', 'emails', 'is_deleted', )
-    list_display = ('name', 'group_type', 'purpose',)
-    inlines = (GroupGchatSpaceInline, GroupMemberInline,)
+    fields = ('name', 'group_type', 'purpose', 'description', 'gchat_space', 'is_deleted', )
+    list_display = ('name', 'group_type', 'gchat_space', 'purpose')
+    inlines = (GroupMemberInline,)
     
 class UserAdmin(admin.ModelAdmin):
     fields = ('username', 'first_name', 'last_name', 'gchat_space', 'gchat_primary_key', 'score', 'email', 'is_active', 'is_staff')

@@ -20,6 +20,8 @@ urlpatterns = [
     url(r'^discuss/(?P<post_id>\d+)/$', views.PostView.as_view(), name="post-old"),
     url(r'^posts/(?P<post_id>\d+)/$', views.PostView.as_view(), name="post-optional-slug"),
 
+    url(r'^groups/new/$', views.NewGroupView.as_view(), name="create_new_group"),
+    url(r'^groups/(?P<group_id>\d+)/edit/$', views.edit_group_view, name="edit_group"),
     url(r'^groups/(?P<group_id>\d+)/$', views.group_home, name="group_home"),
     url(r'^groups/(?P<group_id>\d+)/new/(?P<post_type>\w+)/$', views.NewPostView.as_view(), name="new-post"),
             
@@ -30,6 +32,8 @@ urlpatterns = [
     url(r'^api/posts/(?P<post_id>\d+)/upvote$', views.upvote_post, name="upvote_post"),
     url(r'^api/posts/(?P<post_id>\d+)/downvote$', views.downvote_post, name="downvote_post"),
     url(r'^api/posts/(?P<post_id>\d+)/lastseenat/$', views.update_post_last_seen_at, name="update-last-seen-at"),
+
+    url(r'^api/members/(?P<member_id>\d+)/assign-role/(?P<role_id>\d+)/$', views.edit_member_role, name="edit-member-role"),
 
     url(r'^api/upload$', views.FileUploadView.as_view(), name="upload-files"),
     url(r'^api/users$', views.get_users, name="search_users"),

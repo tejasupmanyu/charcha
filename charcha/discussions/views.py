@@ -7,7 +7,7 @@ from django.utils import timezone
 from uuid import uuid4
 
 from django.http import HttpResponse, JsonResponse
-from django.http import HttpResponseRedirect, HttpResponseBadRequest, HttpResponsePermanentRedirect
+from django.http import HttpResponseRedirect, HttpResponseBadRequest, HttpResponsePermanentRedirect, Http404
 from django.views import View 
 from django.views.decorators.http import require_http_methods
 from django import forms
@@ -27,6 +27,7 @@ from django.core.exceptions import PermissionDenied
 from django.views.decorators.cache import cache_control
 
 from .models import Post, Comment, Reaction, User, Group, LastSeenOnPost, PostSubscribtion, Tag
+from .models import GroupMember, Role
 from .models import GchatSpace
 from .models import comment_cleaner
 
@@ -397,7 +398,7 @@ def google_chatbot(request):
                 text = "Sorry, group messages are not supported in Charcha"
             else:
                 GchatSpace.objects.update_or_create(space=space, defaults={"name": room_name, "is_deleted": False})
-                text = "I have added this room to Charcha, but you will have to create a new Group in Charcha and associate it with this room."
+                text = "Charcha bot added!\nP.S. Automatic group creation from google chate is disabled. Instead, login to Charcha and a create a new group."
 
     elif event['type'] == 'REMOVED_FROM_SPACE':
         if event['space']['type'] == 'DM':
@@ -421,3 +422,63 @@ def google_chatbot(request):
         return JsonResponse({"text": text})
     else:
         return HttpResponse("OK")
+
+class NewGroupForm(forms.ModelForm):
+    class Meta:
+        model = Group
+        fields = ['name', 'group_type', 'members', 'purpose', 'description']
+        widgets = {'group_type': forms.RadioSelect()}
+
+class NewGroupView(LoginRequiredMixin, View):
+    def get(self, request):
+        form = NewGroupForm()
+        return render(request, "new-group.html", context={"form": form})
+        
+    def post(self, request):
+        form = NewGroupForm(request.POST)
+        if not form.is_valid():
+            context = {"form": form}
+            return render(request, "new-group.html", context=context)
+
+        group = form.save()
+        administrator_role = Role.objects.get(name='administrator')
+        member = GroupMember.objects.create(group=group, user=request.user, 
+            role=administrator_role, added_from_gchat=False)
+        return redirect(reverse('edit_group', args=[group.id]))
+        
+class EditGroupForm(forms.ModelForm):
+    class Meta:
+        model = Group
+        fields = ['name', 'group_type', 'purpose', 'description']
+        widgets = {'description': forms.HiddenInput(), 'group_type': forms.RadioSelect()}
+
+
+@require_http_methods(['GET', 'POST'])
+@login_required
+def edit_group_view(request, group_id):
+    group = get_object_or_404_check_acl(Group, requester=request.user, pk=group_id)
+    members = GroupMember.objects.select_related("user", "role").filter(group=group).order_by("user__username")
+    roles = Role.objects.all()
+    my_permissions = group.get_permissions(request.user)
+    if request.method == 'GET':
+        form = EditGroupForm(instance=group)
+    elif request.method == 'POST':
+        form = EditGroupForm(request.POST, instance=group)
+    context={"form": form, "members": members, "roles": roles, "permissions": my_permissions}
+    
+    if request.method == 'POST' and form.is_valid():
+        group.check_permission(request.user, "can_edit_group_details")
+        group = form.save()
+        return redirect(reverse('group_home', args=[group.id]))
+    
+    return render(request, "edit-group.html", context=context)
+    
+@require_http_methods(['GET', 'POST'])
+@login_required
+def edit_member_role(request, member_id, role_id):
+    member = get_object_or_404(GroupMember, pk=member_id)
+    role = get_object_or_404(Role, pk=role_id)    
+    member.group.check_permission(request.user, "can_assign_roles")
+    member.role = role
+    member.save()
+    return HttpResponse('OK')

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% load static %}
+{% block title %}{{form.instance.name}} - Editing{% endblock %}
+
+{% block pagecss %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/css/select2.min.css" rel="stylesheet" crossorigin="anonymous"/>
+{% endblock %}
+
+{% block content %}
+
+<div class="col-md-12 mb-3">
+    <h1>Group Settings</h1>
+</div>
+
+<div class="col-md-8">
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link active" id="general-tab" data-toggle="tab" href="#general" role="tab" aria-controls="general" aria-selected="true">General</a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" id="members-tab" data-toggle="tab" href="#members" role="tab" aria-controls="members" aria-selected="false">Members</a>
+        </li>
+    </ul>
+    <div class="tab-content pt-4" id="myTabContent">
+        <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
+            <form method="post">
+                {% csrf_token %}
+                {% if form.errors %}
+                <div class="alert alert-danger" role="alert">
+                    {{ form.html.errors }}
+                    {{ form.title.errors }}
+                </div>
+                {% endif %}
+                {{ form | crispy }}
+                <div id="div_id_description" class="form-group">
+                    <label for="id_description" class="">
+                    Description
+                    </label>
+                    <div class="">
+                        <trix-editor class="trix-content" input="id_description"></trix-editor>
+                        <small id="hint_id_description" class="form-text text-muted">
+                            A larger description for this group. Include links to other resources, answer frequently asked questions and so on.
+                        </small>
+                    </div>
+                </div>
+                <button type="submit" class="mt-3 btn charcha-btn">Save</button>
+            </form>
+        </div>
+        <div class="tab-pane fade" id="members" role="tabpanel" aria-labelledby="members-tab">
+            <table class="table table-sm table-hover">
+            <caption style="caption-side:top">Members are automatically imported from the google chat room <strong>{{form.instance.gchat_space.name}}</strong>. Only administrators and moderators can change the role of group members.</caption>
+            <thead><tr>
+                <th>User</th>
+                <th>Role</th>
+            </tr></thead>
+            {% for member in members %}
+            <tr>
+                <td>{{member.user.username}}</td>
+                <td class="d-flex">
+                {% if 'can_assign_roles' in permissions %}
+                <select data-member-id="{{member.id}}">
+                    {% for role in roles %}
+                    <option {% if member.role.id == role.id %}SELECTED{% endif %} value="{{role.id}}">{{role.name}}</option>
+                    {% endfor %}
+                </select>
+                <div class="ml-2" id="member-{{member.id}}-indicator"></div>
+                {% else %}
+                {{member.role.name}}
+                {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </table>
+        </div>
+        
+    </div>
+</div>
+
+{% endblock %}
+
+{% block pagejs %}
+<script>
+$(document).ready(function() {
+  $("select[data-member-id]").change(function(event) {
+    var memberId = $(event.target).data("member-id");
+    var roleId = event.target.value;
+
+    var indicatorId = "#member-" + memberId + "-indicator";
+    $(indicatorId).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div>');
+    
+    var url = "/api/members/" + memberId + "/assign-role/" + roleId +"/";
+    var csrftoken = getCookie('csrftoken');
+    $.post(url, {'csrfmiddlewaretoken': csrftoken })
+        .done(function(data){
+            $(indicatorId).html("✔");
+        })
+        .fail(function(data){
+            $(indicatorId).html("⚠");
+        });
+  })
+})
+</script>
+{% endblock %}

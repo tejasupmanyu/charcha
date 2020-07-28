@@ -173,20 +173,20 @@ class Group(models.Model):
         db_table = "groups"
     
     objects = GroupsManager()
-    name = models.CharField(max_length=100, help_text="Name of the group")
+    name = models.CharField(max_length=100, help_text="A unique name for this group")
     group_type = models.IntegerField(
+        default=CLOSED,
         choices = (
             (OPEN, 'Open'),
             (CLOSED, 'Closed'),
             (SECRET, 'Secret'),
         ),
-        help_text="Closed groups can be seen on the listing page and request an invitation, but only members can see the posts. Secret groups don't show up on the listing page.")
+        help_text="<li><strong>Public groups</strong> are accessible to any logged in user belonging to HashedIn</li><li><strong>Closed groups</strong> are only accessible to members, but non-members can request to join</li><li><strong>Secret groups</strong> are only visible to its members</li>")
     is_deleted = models.BooleanField(default=False)
-    purpose = models.CharField(max_length=200, help_text="A 1 or 2 sentence explaining the purpose of this group")
-    description = models.TextField(max_length=4096, help_text="A larger description that can contain links, charter or any other text to better describe the group")
-    members = models.ManyToManyField(User, verbose_name="Members of this group", through='GroupMember', related_name="mygroups", help_text="Members of this group")
-    gchat_spaces = models.ManyToManyField(GchatSpace, verbose_name="Google chat rooms associated with this group", through='GroupGchatSpace', help_text="Associate this group to one or more gchat rooms. This has two purposes - 1) to automatically import members from the gchat room, and 2) to notify the gchat room when a new post is added")
-    emails = ArrayField(models.EmailField(), size=8, help_text="Mailing list address for this group")
+    purpose = models.CharField(max_length=200, blank=True, help_text="A 1 or 2 sentence explaining the purpose of this group")
+    description = models.TextField(max_length=4096, blank=True, help_text="A larger description that can contain links, charter or any other text to better describe the group")
+    members = models.ManyToManyField(User, blank=True,verbose_name="Group Members", through='GroupMember', related_name="mygroups", help_text="Additional members to include in this group")
+    gchat_space = models.ForeignKey(GchatSpace, on_delete=models.PROTECT, null=True, blank=True, verbose_name="Google Chat Room", help_text="Charcha will regularly import members from this chat room. By default, each member will have the role 'member'. You can override the role for any member in the group settings screen.")
 
     @classmethod
     def get(klass, id, user):
@@ -238,24 +238,44 @@ class Group(models.Model):
         if post.parent_post:
             raise Exception("Did not expect a child post to be created from a group!")
     
-        for ggc in GroupGchatSpace.objects.filter(group=self).all():
-            if ggc.notify and not ggc.gchat_space.is_deleted:
-                space_id = ggc.gchat_space.space
-                notify_space(space_id, event)
+        if not self.gchat_space.is_deleted:
+            space_id = self.gchat_space.space
+            notify_space(space_id, event)
+
+    def get_permissions(self, user):
+        permissions = []
+        try:
+            member = GroupMember.objects.select_related("role").get(group=self, user=user)
+            user_role = member.role
+        except GroupMember.DoesNotExist:
+            return permissions
+        
+        if user_role.name == 'administrator':
+            permissions.extend(["can_assign_roles", "can_edit_group_details", "can_view_group_details"])
+        elif user_role.name == 'moderator':
+            permissions.extend(["can_assign_roles", "can_edit_group_details", "can_view_group_details"])
+        elif user_role.name == 'member':
+            permissions.extend(["can_edit_group_details", "can_view_group_details"])
+
+        return permissions
+    def check_permission(self, user, permission):
+        try:
+            member = GroupMember.objects.select_related("role").get(group=self, user=user)
+            user_role = member.role
+        except GroupMember.DoesNotExist:
+            raise PermissionDenied("User " + str(user) + " does not have permission " + permission + " in group " + str(self))
+        
+        if permission == 'can_assign_roles':
+            if user_role.name in ('administrator', 'moderator'):
+                return True
+        elif permission == 'can_edit_group_details':
+            if user_role.name in ('administrator', 'moderator', 'member'):
+                return True
+        raise PermissionDenied("User " + str(user) + " does not have permission " + permission + " in group " + str(self))
 
     def __str__(self):
         return self.name
-    
-class GroupGchatSpace(models.Model):
-    class Meta:
-        db_table = "group_gchat_spaces"
-        verbose_name = "Chat Room"
-    
-    group = models.ForeignKey(Group, on_delete=models.PROTECT)
-    gchat_space = models.ForeignKey(GchatSpace, verbose_name="Room Name", on_delete=models.PROTECT)
-    notify = models.BooleanField(default=True, help_text="Notify the chat room whenever a new post is created in this charcha group")
-    sync_members = models.BooleanField(default=True, help_text="Automatically sync chat room members with this charcha group")
-    
+
 class Role(models.Model):
     'Roles are - administrator, moderator, member, guest'
     class Meta:
@@ -291,6 +311,7 @@ class GroupMember(models.Model):
     group = models.ForeignKey(Group, on_delete=models.PROTECT)
     user = models.ForeignKey(User, on_delete=models.PROTECT)
     role = models.ForeignKey(Role, on_delete=models.PROTECT)
+    added_from_gchat = models.BooleanField()
 
 class PostsManager(models.Manager):
     def for_user(self, user):
