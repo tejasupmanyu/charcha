@@ -48,8 +48,14 @@
             </form>
         </div>
         <div class="tab-pane fade" id="members" role="tabpanel" aria-labelledby="members-tab">
+            <form method="post" action="{% url 'sync-members-with-gchat' form.instance.id %}">
+                {% csrf_token %}
+                <button class="btn charcha-btn" type="submit">Sync Members with Gchat</button>
+            </form>
             <table class="table table-sm table-hover">
-            <caption style="caption-side:top">Members are automatically imported from the google chat room <strong>{{form.instance.gchat_space.name}}</strong>. Only administrators and moderators can change the role of group members.</caption>
+            <caption style="caption-side:top">
+                Members are automatically imported from the google chat room <strong>{{form.instance.gchat_space.name}}</strong>. Only administrators and moderators can change the role of group members.
+            </caption>
             <thead><tr>
                 <th>User</th>
                 <th>Role</th>

@@ -30,6 +30,7 @@ from .models import Post, Comment, Reaction, User, Group, LastSeenOnPost, PostSu
 from .models import GroupMember, Role
 from .models import GchatSpace
 from .models import comment_cleaner
+from .bot import members as get_members_from_gchat
 
 def get_object_or_404_check_acl(klass, requester, *args, **kwargs):
     'Similar to get_object_or_404, but checks that the user has access to the object that is requested'
@@ -422,6 +423,25 @@ def google_chatbot(request):
         return JsonResponse({"text": text})
     else:
         return HttpResponse("OK")
+
+@login_required
+@require_http_methods(['POST'])
+def sync_members_with_gchat(request, group_id):
+    group = get_object_or_404_check_acl(Group, request.user, pk=group_id)
+    redirect_url = reverse('edit_group', args=[group_id])
+    gchat_space = group.gchat_space.space
+    if not gchat_space:
+        return redirect(redirect_url)
+
+    gchat_members = get_members_from_gchat(gchat_space)
+    members = []
+    for member in gchat_members:
+        gchat_pk = member['member']['name']
+        display_name = member['member']['displayName']
+        members.append([gchat_pk, display_name])
+    
+    group.synchronize_gchat_members(members)
+    return redirect(redirect_url)
 
 class NewGroupForm(forms.ModelForm):
     class Meta:

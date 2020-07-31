@@ -1,6 +1,6 @@
 from collections import defaultdict
 import re
-
+from itertools import chain
 from django.db import connection
 from django.utils import timezone
 from django.db.utils import IntegrityError
@@ -221,6 +221,47 @@ class Group(models.Model):
             .annotate(count=Count('fqn'))\
             .order_by('-count')
         return list(tags_with_counts)
+
+    @transaction.atomic
+    def synchronize_gchat_members(self, members):
+        role_member = Role.objects.get(name='member')
+        # memers is a list of (key, display_name) tuples
+        insert_query = "INSERT INTO incoming_members(key, display_name) VALUES " + ",".join(["(%s, %s)"] * len(members))
+        insert_bind_params = list(chain.from_iterable(members))
+        with connection.cursor() as c:
+            c.execute("""
+                CREATE TEMPORARY TABLE incoming_members
+                    (key varchar(100), display_name varchar(100), status varchar(10)) 
+                ON COMMIT DROP;
+            """)
+            c.execute(insert_query, insert_bind_params)
+            c.execute("""
+                UPDATE incoming_members as im
+                SET status = 'existing'
+                FROM group_members gm, users u
+                WHERE im.key = u.gchat_primary_key and u.id = gm.user_id 
+                and gm.group_id = %s 
+            """, [self.id])
+            c.execute("""
+                UPDATE incoming_members as im
+                SET status = 'new'
+                FROM users u
+                WHERE u.gchat_primary_key = im.key
+                AND NOT EXISTS (SELECT 'x' 
+                    FROM group_members gm WHERE gm.group_id = %s
+                    AND gm.user_id = u.id
+                    AND gm.added_from_gchat = true
+                )
+            """, [self.id])
+
+            c.execute("""
+                INSERT INTO group_members(group_id, user_id, role_id, added_from_gchat)
+                SELECT %s, u.id, %s, true
+                FROM incoming_members im JOIN users u
+                on im.key = u.gchat_primary_key
+                and im.status = 'new'
+            """, [self.id, role_member.id])
+                
 
     def _send_new_post_notifications(self, post):
         send_notification_on_mentions(post)

@@ -22,6 +22,7 @@ urlpatterns = [
 
     url(r'^groups/new/$', views.NewGroupView.as_view(), name="create_new_group"),
     url(r'^groups/(?P<group_id>\d+)/edit/$', views.edit_group_view, name="edit_group"),
+    url(r'^groups/(?P<group_id>\d+)/sync-members-with-gchat/$', views.sync_members_with_gchat, name="sync-members-with-gchat"),
     url(r'^groups/(?P<group_id>\d+)/$', views.group_home, name="group_home"),
     url(r'^groups/(?P<group_id>\d+)/new/(?P<post_type>\w+)/$', views.NewPostView.as_view(), name="new-post"),
             
