@@ -12,35 +12,38 @@
       <h2 class="mb-0">{{ group.name | title }}</h2>
       <small class="text-muted">{{ group.purpose }}</small>
     </div>
-    <div class="dropdown show">
-      <a class="btn charcha-btn dropdown-toggle" href="javascript:void(0)" role="button" id="newPostMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-       New
-      </a>
-      <div class="dropdown-menu" aria-labelledby="newPostMenuLink">
-        <a class="dropdown-item" href="{% url "new-post" group.id "feedback" %}">
-          <div class="d-flex flex-column">
-            <span>Request Feedback</span>
-            <small class="text-muted">on a design, proposal, code etc.</small>
-          </div>
+    <div class="d-flex">
+      <div class="mr-2"><a class="btn charcha-btn" href="{% url 'edit_group' group.id %}">Manage Group</a></div>
+      <div class="dropdown show">
+        <a class="btn charcha-btn dropdown-toggle" href="javascript:void(0)" role="button" id="newPostMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        New
         </a>
-        <a class="dropdown-item" href="{% url "new-post" group.id "question" %}">
-          <div class="d-flex flex-column">
-            <span>Question</span>
-            <small class="text-muted">on company issues, technology, etc.</small>
-          </div>
-        </a>
-        <a class="dropdown-item" href="{% url "new-post" group.id "discussion" %}">
-          <div class="d-flex flex-column">
-            <span>Discussion</span>
-            <small class="text-muted">On any topic relevant to the group</small>
-          </div>
-        </a>
-        <a class="dropdown-item" href="{% url "new-post" group.id "announcement" %}">
-          <div class="d-flex flex-column">
-            <span>Announcement</span>
-            <small class="text-muted">Inform the group of new developments</small>
-          </div>
-        </a>
+        <div class="dropdown-menu" aria-labelledby="newPostMenuLink">
+          <a class="dropdown-item" href="{% url "new-post" group.id "feedback" %}">
+            <div class="d-flex flex-column">
+              <span>Request Feedback</span>
+              <small class="text-muted">on a design, proposal, code etc.</small>
+            </div>
+          </a>
+          <a class="dropdown-item" href="{% url "new-post" group.id "question" %}">
+            <div class="d-flex flex-column">
+              <span>Question</span>
+              <small class="text-muted">on company issues, technology, etc.</small>
+            </div>
+          </a>
+          <a class="dropdown-item" href="{% url "new-post" group.id "discussion" %}">
+            <div class="d-flex flex-column">
+              <span>Discussion</span>
+              <small class="text-muted">On any topic relevant to the group</small>
+            </div>
+          </a>
+          <a class="dropdown-item" href="{% url "new-post" group.id "announcement" %}">
+            <div class="d-flex flex-column">
+              <span>Announcement</span>
+              <small class="text-muted">Inform the group of new developments</small>
+            </div>
+          </a>
+        </div>
       </div>
     </div>
     {% else %}
@@ -109,7 +112,7 @@
 <div class="col-md-4">
   {% if group %}
   <div class="card mt-3">
-    <h4 class="card-header">About {{group.name|title}}</h4>
+    <h4 class="card-header">{{group.name|title}}</h4>
     <div class="card-body">
       <div class="trix-content">
         {{ group.description | safe}}
