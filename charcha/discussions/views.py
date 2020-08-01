@@ -24,7 +24,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import DefaultStorage
 from django.core.exceptions import PermissionDenied
-from django.views.decorators.cache import cache_control
+from django.views.decorators.cache import cache_control, never_cache
 
 from .models import Post, Comment, Reaction, User, Group, LastSeenOnPost, PostSubscribtion, Tag
 from .models import GroupMember, Role
@@ -45,6 +45,7 @@ def prepare_html_for_edit(html):
     return re.sub(regex, r"<h1>\1</h1>", html)    
 
 @login_required
+@never_cache
 def homepage(request):
     sort_by = request.GET.get('sort_by', 'newactivity')
     if sort_by not in ('newactivity', 'recentposts'):
@@ -54,6 +55,7 @@ def homepage(request):
     return render(request, "home.html", context={"posts": posts, "groups": groups, "selected_sort_by": sort_by})
 
 @login_required
+@never_cache
 def group_home(request, group_id):
     group = get_object_or_404_check_acl(Group, requester=request.user, pk=group_id)
     recent_tags = group.recent_tags()

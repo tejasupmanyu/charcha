@@ -162,7 +162,8 @@ class GroupsManager(models.Manager):
     def for_user(self, user):
         # Return a queryset that only returns groups the user has access to
         return Group.objects\
-            .filter(Q(Exists(GroupMember.objects.only('id').filter(group=OuterRef('pk'), user=user))) | Q(group_type=Group.OPEN))
+            .filter(Q(Exists(GroupMember.objects.only('id').filter(group=OuterRef('pk'), user=user))) | Q(group_type=Group.OPEN))\
+            .filter(is_deleted=False)
 
 class Group(models.Model):
     OPEN = 0
