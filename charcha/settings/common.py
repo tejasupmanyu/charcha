@@ -81,7 +81,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'crispy_forms',
     'charcha.discussions',
-    'charcha.teams',
     'social_django',
 ]
 
