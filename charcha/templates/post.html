@@ -33,7 +33,7 @@
 
   <div class="mt-n2 mb-4">
     {% for tag in post.tags.all %}
-    <a href="{% url "group_home" post.group.id %}"><span class="tag mr-2">{{ tag.fqn }}</span></a>
+    <a href="{% url "tag_home" tag.id %}"><span class="tag mr-2">{{ tag.fqn }}</span></a>
     {% endfor %}
   </div>
 

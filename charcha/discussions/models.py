@@ -416,7 +416,7 @@ class PostsManager(models.Manager):
         
         return (parent_post, child_posts)
 
-    def recent_posts(self, user, group=None, sort_by='recentposts'):
+    def get_post_list(self, user, tag=None, group=None, sort_by='recentposts'):
         posts = Post.objects\
             .select_related('author')\
             .select_related('group')\
@@ -427,7 +427,9 @@ class PostsManager(models.Manager):
             )
         if group:
             posts = posts.filter(group=group)
-        
+        if tag:
+            posts = posts.filter(Q(Exists(PostTag.objects.only('id').filter(post=OuterRef('pk'), tag=tag))))
+
         if sort_by == 'recentposts':
             posts = posts.order_by("-submission_time")
         else:
@@ -826,6 +828,11 @@ class LastSeenOnPost(models.Model):
     post = models.ForeignKey(Post, on_delete=models.PROTECT)
     seen = models.DateTimeField(auto_now=True)
 
+class TagManager(models.Manager):
+    def for_user(self, user):
+        # Tags are visible to all users
+        return Tag.objects.all()
+
 class Tag(models.Model):
     class Meta:
         db_table = "tags"
@@ -837,6 +844,7 @@ class Tag(models.Model):
             models.UniqueConstraint(fields=['parent', 'name'], name="tag_unique_name_within_parent")
         ]
     
+    objects = TagManager()
     name = models.CharField(max_length=100)
     parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, default=None)
 

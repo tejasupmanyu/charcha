@@ -47,23 +47,36 @@ def prepare_html_for_edit(html):
 @login_required
 @never_cache
 def homepage(request):
+    mode = "home"
     sort_by = request.GET.get('sort_by', 'newactivity')
     if sort_by not in ('newactivity', 'recentposts'):
         sort_by = 'newactivity'
-    posts = Post.objects.recent_posts(request.user, sort_by=sort_by)
+    posts = Post.objects.get_post_list(request.user, sort_by=sort_by)
     groups = Group.objects.for_user(request.user).all()
-    return render(request, "home.html", context={"posts": posts, "groups": groups, "selected_sort_by": sort_by})
+    return render(request, "home.html", context={"posts": posts, "groups": groups, "selected_sort_by": sort_by, "mode":mode})
 
 @login_required
 @never_cache
 def group_home(request, group_id):
+    mode = "group"
     group = get_object_or_404_check_acl(Group, requester=request.user, pk=group_id)
     recent_tags = group.recent_tags()
     sort_by = request.GET.get('sort_by', 'newactivity')
     if sort_by not in ('newactivity', 'recentposts'):
         sort_by = 'newactivity'
-    posts = Post.objects.recent_posts(request.user, group=group, sort_by=sort_by)
-    return render(request, "home.html", context={"posts": posts, "group": group, "recent_tags": recent_tags, "selected_sort_by": sort_by})
+    posts = Post.objects.get_post_list(request.user, group=group, sort_by=sort_by)
+    return render(request, "home.html", context={"posts": posts, "group": group, "recent_tags": recent_tags, "selected_sort_by": sort_by, "mode":mode})
+
+@login_required
+@never_cache
+def tag_home(request, tag_id):
+    mode = "tag"
+    tag = get_object_or_404_check_acl(Tag, requester=request.user, pk=tag_id)
+    sort_by = request.GET.get('sort_by', 'newactivity')
+    if sort_by not in ('newactivity', 'recentposts'):
+        sort_by = 'newactivity'
+    posts = Post.objects.get_post_list(request.user, tag=tag, sort_by=sort_by)
+    return render(request, "home.html", context={"posts": posts, "tag": tag, "selected_sort_by": sort_by, "mode":mode})
 
 @login_required
 def set_user_timezone(request):
