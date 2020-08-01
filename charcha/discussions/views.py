@@ -471,8 +471,8 @@ class NewGroupView(LoginRequiredMixin, View):
 class EditGroupForm(forms.ModelForm):
     class Meta:
         model = Group
-        fields = ['name', 'group_type', 'purpose', 'description']
-        widgets = {'description': forms.HiddenInput(), 'group_type': forms.RadioSelect()}
+        fields = ['name', 'purpose', 'description']
+        widgets = {'description': forms.HiddenInput()}
 
 
 @require_http_methods(['GET', 'POST'])
