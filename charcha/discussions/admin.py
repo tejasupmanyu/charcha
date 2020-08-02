@@ -42,7 +42,6 @@ class GroupMemberInline(admin.TabularInline):
 class GroupAdmin(admin.ModelAdmin):
     fields = ('name', 'group_type', 'purpose', 'description', 'gchat_space', 'is_deleted', )
     list_display = ('name', 'group_type', 'gchat_space', 'purpose')
-    inlines = (GroupMemberInline,)
     
 class UserAdmin(admin.ModelAdmin):
     fields = ('username', 'first_name', 'last_name', 'gchat_space', 'gchat_primary_key', 'score', 'email', 'is_active', 'is_staff')
