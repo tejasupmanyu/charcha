@@ -280,5 +280,6 @@ function attachTribute(uniqueId) {
 }
 $(document).ready(function() {
   attachTribute('trix-new-child-post');
+  attachTribute('trix-new-post');
   getUsers();
 });
