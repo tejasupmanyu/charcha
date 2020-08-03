@@ -135,9 +135,9 @@
     <div class="card-header d-flex align-items-start justify-content-between text-muted ">
       <div class="d-flex">
         {% if childpost.author.avatar %}
-          <img width="40" height="40" src="{{childpost.author.avatar}}" class="rounded-circle mr-3"/>
+          <img alt="avatar" width="40" height="40" src="{{childpost.author.avatar}}" class="rounded-circle mr-3"/>
         {% else %}
-          <img width="30" height="30" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
+          <img alt="avatar" width="30" height="30" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
         {% endif %}
         <div class="d-flex">
           <a class="author" href="{% url 'profile' childpost.author.id %}">{{ childpost.author.first_name }} {{ childpost.author.last_name }}</a>
