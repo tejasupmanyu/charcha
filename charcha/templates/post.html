@@ -134,19 +134,18 @@
   <div id="post-{{childpost.id}}" class="mb-3 rounded card post {% if childpost.is_read %} read {% else %} unread {% endif %} {% if childpost.has_unread_children %} has-unread-children {% endif %}">
     <div class="card-header d-flex align-items-start justify-content-between text-muted ">
       <div class="d-flex">
-        <div>
-          {% if childpost.author.avatar %}
-          <img width="40" src="{{childpost.author.avatar}}" class="rounded-circle mr-3"/>
-          {% else %}
-          <img width="30" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
-          {% endif %}
-        </div> 
+        {% if childpost.author.avatar %}
+          <img width="40" height="40" src="{{childpost.author.avatar}}" class="rounded-circle mr-3"/>
+        {% else %}
+          <img width="30" height="30" src="{% static "icons/person.svg" %}" class="rounded-circle mr-3"/>
+        {% endif %}
         <div class="d-flex">
           <a class="author" href="{% url 'profile' childpost.author.id %}">{{ childpost.author.first_name }} {{ childpost.author.last_name }}</a>
           <span class="d-none d-md-block">, {{childpost.author.designation}}</span>
         </div>
+        
       </div>
-      <div class="ml-auto">
+      <div>
         <small class="px-2">
           {{ childpost.submission_time | naturaltime }}
         </small>
